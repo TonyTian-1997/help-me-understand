@@ -1,6 +1,6 @@
 /* ============================================================
-   Help Me Understand · interactive Q&A layer — Feishu-style
-   comment design.
+   Help Me Understand · interactive Q&A layer — inline document
+   comments.
    · Quoted passages carry a persistent amber highlight (hot on
      hover/flash on jump), like a document comment
    · A right sidebar slides in with threaded cards: avatar,
@@ -24,7 +24,7 @@
   --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
   --mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, "Cascadia Code", monospace;
 
-  /* Feishu-ish comment palette */
+  /* comment palette */
   --fz-ink: #1F2329;
   --fz-sub: #646A73;
   --fz-faint: #8F959E;
@@ -38,8 +38,8 @@
 }
 
 /* ── in-text anchor: the commented passage ───────────────
-   Amber background, no underline — Feishu comment style.
-   Distinct from the author's yellow mark.hl by tone + badge. */
+   Amber background, no underline — reads as a reader comment,
+   distinct from the author's yellow mark.hl by tone + badge. */
 .qa-anchor {
   background: var(--fz-anchor);
   color: inherit;

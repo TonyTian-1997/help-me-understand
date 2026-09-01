@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.4 (2026-09-02)
+
+- Code comments in the bundled JS/CSS and the ops reference now describe
+  the interaction in neutral, self-contained terms
+
 ## 1.1.3 (2026-09-02)
 
 - **Sidebar open = all floating controls step aside**: the selection

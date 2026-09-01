@@ -17,7 +17,7 @@ increments by `seq`. A question is **done** once it has an answer **or**
 the reader resolved it in the browser (`pending` respects both). Corrupt
 lines are skipped everywhere — never hand-repair the file.
 
-The browser presents threads Feishu-document style: the quoted passage
+The browser presents threads the way modern document editors do: the quoted passage
 stays amber-highlighted in the text, a right sidebar lists threads with
 inline reply and resolve; hover a card to light up its passage, click a
 card to jump-and-flash to it.

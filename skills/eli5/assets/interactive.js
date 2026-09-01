@@ -1,12 +1,12 @@
 /* ============================================================
-   Help Me Understand · interactive layer — Feishu-style comments
+   Help Me Understand · interactive layer — inline document comments
    (select-to-ask → Claude answers → comment threads in the page)
    ------------------------------------------------------------
    How it works:
    · Select any text → a comment bubble appears → type a question
    · The question is POSTed to the local notes server and
      appended to qa.jsonl; the quoted text gets a persistent
-     amber highlight (Feishu-comment style) with a badge
+     amber highlight with a badge
    · Claude-side a watcher monitors qa.jsonl; answers are written
      back as replies in the same thread
    · Right sidebar: comment threads with avatars, hover-linking
@@ -182,7 +182,7 @@
     }
   }
 
-  // ── in-text anchors: Feishu-style persistent highlight ──
+  // ── in-text anchors: persistent comment highlight ──
   function tryAnchor(entry) {
     if (entry.anchored || entry.resolved) return;
     var quote = (entry.q.quote || "").replace(/\s+/g, " ").trim();
@@ -363,7 +363,7 @@
     return card;
   }
 
-  // inline reply composer (Feishu-style, under the thread)
+  // inline reply composer (under the thread)
   function toggleReplyBox(card, entry) {
     closePopover(); // following up in a thread → collapse the ask bubble
     var existing = card.querySelector(".qa-replybox");
