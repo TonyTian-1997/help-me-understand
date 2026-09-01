@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.3 (2026-09-02)
+
+- **Sidebar open = all floating controls step aside**: the selection
+  comment button no longer appears anywhere on the page while the comment
+  sidebar is open (previously only selections *behind* the sidebar were
+  suppressed, so the button still floated over visible text and even
+  re-appeared right after opening the sidebar)
+- The round 💬 button hides while the sidebar is open — it was sitting on
+  top of the sidebar's bottom corner — and returns on close, where a live
+  selection immediately re-summons the selection button
+
 ## 1.1.2 (2026-09-02)
 
 - **Cache fix**: the notes server now sends `Cache-Control: no-cache`, so

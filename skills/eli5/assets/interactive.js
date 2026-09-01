@@ -277,6 +277,7 @@
     panelOpen = true;
     panel.classList.add("open");
     hideAskBtn();
+    fab.style.display = "none"; // the round button overlaps the sidebar — step aside
     render();
     if (focusQid) {
       var card = panel.querySelector('[data-qid="' + focusQid + '"]');
@@ -291,6 +292,8 @@
   function closePanel() {
     panelOpen = false;
     panel.classList.remove("open");
+    fab.style.display = ""; // bring the round button back
+    setTimeout(positionAsk, 30); // a live selection re-summons the button at once
   }
 
   function threadCard(entry) {
@@ -481,7 +484,9 @@
 
   function positionAsk() {
     if (!state.online) return;
-    if (pop) return; // the bubble is open — never summon the button on top of it
+    // sidebar open → no floating button at all, wherever the selection is
+    if (panelOpen) { hideAskBtn(); return; }
+    if (pop) { hideAskBtn(); return; } // bubble open — never stack the button
     if (panel.querySelector(".qa-replybox")) { hideAskBtn(); return; } // composing
     var sel = window.getSelection();
     var text = sel ? sel.toString().trim() : "";
@@ -493,8 +498,6 @@
     if (sel.rangeCount && panel.contains(sel.anchorNode)) { hideAskBtn(); return; }
     var rect = sel.getRangeAt(0).getBoundingClientRect();
     if (!rect || (!rect.width && !rect.height)) { hideAskBtn(); return; }
-    // text hidden behind the open sidebar isn't selectable for comment
-    if (panelOpen && rect.right > window.innerWidth - 348) { hideAskBtn(); return; }
     askBtn.style.display = "block";
     var x = Math.min(rect.left + rect.width / 2 - 55, window.innerWidth - 120);
     var y = rect.top - 40 < 12 ? rect.bottom + 10 : rect.top - 40;
