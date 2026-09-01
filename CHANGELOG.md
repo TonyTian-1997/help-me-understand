@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.1 (2026-09-02)
+
+- **Per-page comment threads**: each note's sidebar now shows only the
+  threads asked on that page — previously the single Q&A log rendered on
+  every page, mixing questions from different notes into one list.
+  Filtering is client-side by the stored `page` field; answers and
+  resolves still flow through the shared log, and Claude keeps answering
+  globally by question id
+
 ## 1.3.0 (2026-09-02)
 
 Body/build split — the model writes content, the tool owns structure.

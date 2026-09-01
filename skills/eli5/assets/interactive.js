@@ -91,6 +91,9 @@
       : "http://127.0.0.1:" + PORT;
   var POLL_MS = 8000;
   var AVATAR = { you: { color: "#FF8800", letter: "U" }, claude: { color: "#3370FF", letter: "C" } };
+  // this page's own file name — the comment sidebar is per-document:
+  // threads asked on other pages stay on those pages
+  var PAGE = decodeURIComponent(location.pathname.split("/").pop() || "");
 
   var state = { lastSeq: 0, byQid: {}, order: [], counter: 0, online: false };
 
@@ -150,23 +153,19 @@
     items.forEach(function (e) {
       if (e.seq > state.lastSeq) state.lastSeq = e.seq;
       if (e.type === "question") {
+        if (e.page && e.page !== PAGE) return; // other pages' threads stay there
         if (!state.byQid[e.id]) {
           state.counter += 1;
           state.byQid[e.id] = { q: e, a: null, no: state.counter, anchored: false, resolved: false, refs: [] };
           state.order.push(e.id);
         }
       } else if (e.type === "answer") {
+        // answers carry only a qid; unknown qids belong to other pages
         var hit = state.byQid[e.qid];
         if (hit) hit.a = e;
-        else state["orphan_" + e.qid] = e;
       } else if (e.type === "resolve") {
         var t = state.byQid[e.qid];
         if (t) t.resolved = true;
-      }
-      var orphan = state["orphan_" + e.qid];
-      if (e.type === "question" && orphan) {
-        state.byQid[e.id].a = orphan;
-        delete state["orphan_" + e.qid];
       }
     });
     render();
@@ -389,11 +388,10 @@
       if (!text) return;
       send.disabled = true;
       send.textContent = T.sending;
-      var page = decodeURIComponent(location.pathname.split("/").pop() || "");
       fetch(API + "/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ page: page, quote: entry.q.quote || "", question: text })
+        body: JSON.stringify({ page: PAGE, quote: entry.q.quote || "", question: text })
       })
         .then(function (r) { return r.json(); })
         .then(function (e2) {
@@ -554,11 +552,10 @@
       if (!text) return;
       send.disabled = true;
       send.textContent = T.sending;
-      var page = decodeURIComponent(location.pathname.split("/").pop() || "");
       fetch(API + "/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ page: page, quote: quote, question: text })
+        body: JSON.stringify({ page: PAGE, quote: quote, question: text })
       })
         .then(function (r) { return r.json(); })
         .then(function (entry) {
