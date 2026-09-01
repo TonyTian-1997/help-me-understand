@@ -56,11 +56,15 @@ its own — the note is a keepsake, not a prerequisite.
    `recoil-vs-redux`). If `~/.understand/notes/<slug>.html` exists, **update
    it in place** — merge new sections, don't duplicate the note.
 3. Write the note from `~/.understand/assets/note-template.html`,
-   following the design vocabulary in
-   [references/html-style.md](references/html-style.md) (eli5 analogy box,
-   highlighter marks, margin notes, evidence chain). Cite real `file:line`
-   evidence whenever the subject is code; link docs otherwise. Set
-   `data-port` on the interactive `<script>` to the port from Step 4.
+   following the design vocabulary **and the element quotas** in
+   [references/html-style.md](references/html-style.md): left rail with
+   section anchors, eli5 analogy boxes, ≥1 SVG diagram, ≥2 tables (closing
+   glossary always), ≥1 tree-shaped trace block, 2–3 deep dives, callouts
+   with specific tag text. A thin note (a yellow box + two paragraphs per
+   section) is a **bug** — the reader should see a richly annotated
+   textbook page, not an essay. Cite real `file:line` evidence whenever the
+   subject is code; link docs otherwise. Set `data-port` on the interactive
+   `<script>` to the port from Step 4.
 4. Update the catalog `~/.understand/notes/index.html`: keep a
    `catalog.json` inside `~/.understand/` mapping slug →
    `{title, lede, date, lang}` and regenerate `index.html` from it after

@@ -1,6 +1,6 @@
 {
   "name": "help-me-understand",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "ELI5 explanations with an interactive HTML notebook: get a plain-language answer in your terminal, a beautifully annotated note in the browser, and ask follow-up questions by selecting any sentence on the page.",
   "author": {
     "name": "TonyTian",
