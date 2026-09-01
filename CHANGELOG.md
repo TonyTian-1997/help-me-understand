@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.7.1 (2026-09-02)
+
+- **One entry point**: a small 💬 bubble at the bottom-left replaces
+  both the always-open composer and the bottom-right round button.
+  Clicking it expands the composer in place (with a "Comments · N" link
+  to open the sidebar and a collapse ✕); selecting text shows an amber
+  dot on the bubble (quote loaded) instead of forcing the box open;
+  sending collapses back to the bubble and opens the thread
+
 ## 1.7.0 (2026-09-02)
 
 Interaction model simplified: a docked composer instead of a floating

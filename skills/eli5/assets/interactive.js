@@ -43,6 +43,7 @@
       composerPlaceholder: "Ask about the selected passage, or anything on this page…",
       composerEmpty: "Ask anything about this note…",
       clearQuote: "drop quoted passage",
+      collapse: "Collapse",
       writing: "✍️ Writing — this page updates itself"
     },
     "zh-CN": {
@@ -69,6 +70,7 @@
       composerPlaceholder: "就选中的这段提问，或问本页任何问题…",
       composerEmpty: "关于这篇笔记，随便问…",
       clearQuote: "取消引用",
+      collapse: "收起",
       writing: "✍️ 正在书写——本页会自动更新"
     }
   };
@@ -178,8 +180,13 @@
   function setOnline(on) {
     if (on === state.online) return;
     state.online = on;
-    renderFab();
-    composer.style.display = on ? "" : "none"; // offline = invisible layer
+    if (!on) { // offline = invisible layer
+      bubble.style.display = "none";
+      composer.style.display = "none";
+      composerOpen = false;
+    } else {
+      renderBubble();
+    }
     if (on && !setOnline.tipped) {
       setOnline.tipped = true;
       toast(T.tip);
@@ -262,28 +269,32 @@
     entry.anchored = true;
   }
 
-  // ── UI: sidebar / FAB / threads ─────────────────────
-  var fab = el("button", "qa-fab");
-  var fabIcon = el("span", "qa-fab-ico", "💬");
-  var fabCnt = el("span", "qa-fab-cnt");
-  fab.appendChild(fabIcon);
-  fab.appendChild(fabCnt);
+  // ── UI: sidebar / bubble / threads ──────────────────
+  var bubble = el("button", "qa-bubble");
+  var bubbleIco = el("span", "qa-bubble-ico", "💬");
+  var bubbleCnt = el("span", "qa-bubble-cnt");
+  var bubbleDot = el("span", "qa-bubble-dot");
+  bubble.appendChild(bubbleIco);
+  bubble.appendChild(bubbleCnt);
+  bubble.appendChild(bubbleDot);
   var panel = el("aside", "qa-panel");
   var panelOpen = false;
 
-  function renderFab() {
+  function renderBubble() {
     if (!state.online) {
-      fab.style.display = "none"; // offline = the whole layer is invisible
+      bubble.style.display = "none"; // offline = the whole layer is invisible
       return;
     }
-    fab.style.display = "";
-    fab.title = T.fab;
+    bubble.style.display = "";
+    bubble.title = T.fab;
+    var open = state.order.filter(function (id) { return !state.byQid[id].resolved; }).length;
+    compComments.textContent = T.fab + (open ? " " + open : "");
     var pending = state.order.filter(function (id) { return !state.byQid[id].a && !state.byQid[id].resolved; }).length;
     if (pending > 0) {
-      fabCnt.textContent = String(pending);
-      fabCnt.style.display = "";
+      bubbleCnt.textContent = String(pending);
+      bubbleCnt.style.display = "";
     } else {
-      fabCnt.style.display = "none";
+      bubbleCnt.style.display = "none";
     }
   }
 
@@ -291,7 +302,6 @@
     panelOpen = true;
     panel.classList.add("open");
     document.body.classList.add("qa-panel-open");
-    fab.style.display = "none"; // the round button overlaps the sidebar — step aside
     var wb = document.querySelector(".hmu-writing-badge");
     if (wb) wb.style.display = "none";
     render();
@@ -309,7 +319,6 @@
     panelOpen = false;
     panel.classList.remove("open");
     document.body.classList.remove("qa-panel-open");
-    renderFab();
     var wb = document.querySelector(".hmu-writing-badge");
     if (wb) wb.style.display = "";
   }
@@ -451,7 +460,7 @@
   }
 
   function render() {
-    renderFab();
+    renderBubble();
     state.order.forEach(function (id) {
       tryAnchor(state.byQid[id]);
       var t = state.byQid[id];
@@ -484,12 +493,14 @@
     panel.appendChild(list);
   }
 
-  fab.addEventListener("click", function () {
-    panelOpen ? closePanel() : openPanel();
-  });
-
-  // ── composer: docked bottom-left, always ready ──────
+  // ── composer: expands from the bottom-left bubble ──
   var composer = el("div", "qa-composer");
+  var compHead = el("div", "qa-comp-head");
+  var compComments = el("button", "qa-comp-comments", T.fab);
+  var compClose = el("button", "qa-comp-close", "✕");
+  compClose.title = T.collapse;
+  compHead.appendChild(compComments);
+  compHead.appendChild(compClose);
   var compQuote = el("div", "qa-comp-quote");
   compQuote.style.display = "none";
   var compTa = document.createElement("textarea");
@@ -501,15 +512,33 @@
   var compSend = el("button", "send", T.send);
   compRow.appendChild(compDrop);
   compRow.appendChild(compSend);
+  composer.appendChild(compHead);
   composer.appendChild(compQuote);
   composer.appendChild(compTa);
   composer.appendChild(compRow);
-  composer.style.display = "none"; // until first successful poll
+  composer.style.display = "none";
   document.body.appendChild(composer);
+
+  var composerOpen = false;
+  function expandComposer(focus) {
+    composerOpen = true;
+    bubble.style.display = "none";
+    composer.style.display = "";
+    if (focus) compTa.focus();
+  }
+  function collapseComposer() {
+    composerOpen = false;
+    composer.style.display = "none";
+    renderBubble();
+  }
+  bubble.addEventListener("click", function () { expandComposer(true); });
+  compClose.addEventListener("click", collapseComposer);
+  compComments.addEventListener("click", function () { openPanel(); });
 
   var currentQuote = "";
   function setQuote(q) {
     currentQuote = q;
+    bubble.classList.toggle("has-quote", !!q);
     if (q) {
       compQuote.textContent = "“" + (q.length > 140 ? q.slice(0, 140) + "…" : q) + "”";
       compQuote.style.display = "";
@@ -558,6 +587,7 @@
           compTa.value = "";
           setQuote("");
           openPanel(entry.id, true);
+          collapseComposer();
           toast(T.sent);
         } else {
           throw new Error("bad response");
@@ -607,9 +637,9 @@
   }
 
   // ── start ───────────────────────────────────────────
-  document.body.appendChild(fab);
+  document.body.appendChild(bubble);
   document.body.appendChild(panel);
-  renderFab();
+  renderBubble();
   poll();
   setInterval(poll, POLL_MS);
 })();
