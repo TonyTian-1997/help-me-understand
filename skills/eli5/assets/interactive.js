@@ -1,16 +1,16 @@
 /* ============================================================
-   Help Me Understand · interactive layer
-   (select-to-ask → Claude answers → in-page display)
+   Help Me Understand · interactive layer — Feishu-style comments
+   (select-to-ask → Claude answers → comment threads in the page)
    ------------------------------------------------------------
    How it works:
-   · Select any text → an "Ask" button appears → type a question
+   · Select any text → a comment bubble appears → type a question
    · The question is POSTed to the local notes server and
-     appended to qa.jsonl
+     appended to qa.jsonl; the quoted text gets a persistent
+     amber highlight (Feishu-comment style) with a badge
    · Claude-side a watcher monitors qa.jsonl; answers are written
-     back to the same file
-   · This page polls GET /qa?since= every 8s and reveals answers
-   · Quoted text gets a blue dotted anchor + a ❓N badge that
-     jumps to the matching Q&A card
+     back as replies in the same thread
+   · Right sidebar: comment threads with avatars, hover-linking
+     to the highlighted text, inline reply box, and resolve
    · With no server reachable, the whole layer hides itself
    ============================================================ */
 (function () {
@@ -19,44 +19,57 @@
   // ── i18n (English default; zh auto-detected from the browser) ──
   var L10N = {
     en: {
-      askBtn: "❓ Ask",
-      fab: "Questions",
-      fabOffline: "Questions (offline)",
-      tip: "📖 Interactive mode: select any text → ask a question",
-      drawerTitle: "My Questions",
-      drawerHint: "select text · answers appear automatically",
-      empty: "No questions yet. Select any passage in the text and click “Ask”.",
-      asked: "answered",
-      waiting: "waiting",
-      placeholder: "What would you like to ask about this passage? (⌘/Ctrl+Enter to send)",
-      cancel: "Cancel",
+      askBtn: "Comment",
+      fab: "Comments",
+      fabOffline: "Comments (offline)",
+      tip: "📖 Select any text to ask a question",
+      panelTitle: "Comments",
+      panelSub: "select text in the document to ask",
+      empty: "No comments yet. Select any passage and click “Comment”.",
+      you: "You",
+      claude: "Claude",
+      waiting: "waiting for Claude…",
+      reply: "Reply",
+      resolve: "Resolve",
+      resolved: "Resolved",
+      resolvedTag: "Resolved",
+      replyPlaceholder: "Reply with another question…",
       send: "Send",
+      cancel: "Cancel",
       sending: "Sending…",
       retry: "Retry",
-      sent: "✅ Sent — the answer will appear shortly",
+      sent: "✅ Sent — the answer will appear here",
       waitNote: "⏳ Sent to Claude — the answer will appear here…",
       sendFail: "Send failed — is the notes server running?",
-      offlineHint: "The notes server is not running. Start it from your Claude Code session."
+      resolveFail: "Could not mark as resolved",
+      offlineHint: "The notes server is not running. Restart it from your Claude Code session.",
+      placeholder: "What would you like to ask about this passage? (⌘/Ctrl+Enter to send)"
     },
     "zh-CN": {
-      askBtn: "❓ 提问",
-      fab: "问答",
-      fabOffline: "问答（离线）",
-      tip: "📖 互动模式：划选任意文字 → 提问",
-      drawerTitle: "我的提问",
-      drawerHint: "划词提问 · 回答自动出现",
-      empty: "还没有提问。划选正文里的任意一段文字，点「提问」。",
-      asked: "已回答",
-      waiting: "等待中",
-      placeholder: "关于这段话想问什么？（⌘/Ctrl+Enter 发送）",
-      cancel: "取消",
+      askBtn: "评论",
+      fab: "评论",
+      fabOffline: "评论（离线）",
+      tip: "📖 划选任意文字即可提问",
+      panelTitle: "评论",
+      panelSub: "划选正文任意文字即可提问",
+      empty: "还没有评论。划选正文里的任意一段文字，点「评论」。",
+      you: "你",
+      claude: "Claude",
+      waiting: "等待 Claude 回答…",
+      reply: "回复",
+      resolve: "解决",
+      resolvedTag: "已解决",
+      replyPlaceholder: "继续追问…",
       send: "发送",
+      cancel: "取消",
       sending: "发送中…",
       retry: "重试",
       sent: "✅ 已发送，回答稍后出现在这里",
       waitNote: "⏳ 已发给 Claude，回答稍后出现在这里…",
       sendFail: "发送失败：本地服务器没有在跑？",
-      offlineHint: "笔记服务器没在跑：回到 Claude Code 会话重新生成即可。"
+      resolveFail: "标记解决失败",
+      offlineHint: "笔记服务器没在跑：回到 Claude Code 会话重新生成即可。",
+      placeholder: "关于这段话想问什么？（⌘/Ctrl+Enter 发送）"
     }
   };
   var T = (function () {
@@ -71,15 +84,13 @@
   })();
 
   // ── base config ─────────────────────────────────────
-  // Pages opened over http(s) talk same-origin; file:// pages
-  // fall back to the local server, whose port the note generator
-  // writes into the data-port attribute of this script tag.
   var PORT = (document.currentScript && document.currentScript.getAttribute("data-port")) || "8899";
   var API =
     location.protocol === "http:" || location.protocol === "https:"
       ? ""
       : "http://127.0.0.1:" + PORT;
   var POLL_MS = 8000;
+  var AVATAR = { you: { color: "#FF8800", letter: "U" }, claude: { color: "#3370FF", letter: "C" } };
 
   var state = { lastSeq: 0, byQid: {}, order: [], counter: 0, online: false };
 
@@ -116,6 +127,13 @@
     });
     return out;
   }
+  function avatar(kind, small) {
+    var a = AVATAR[kind] || AVATAR.you;
+    var n = el("span", "qa-av" + (small ? " sm" : ""), a.letter);
+    n.style.background = a.color;
+    return n;
+  }
+  function timeOf(ts) { return (ts || "").split(" ").slice(-1)[0] || ts || ""; }
 
   // ── data plane: poll + merge ────────────────────────
   function poll() {
@@ -134,17 +152,17 @@
       if (e.type === "question") {
         if (!state.byQid[e.id]) {
           state.counter += 1;
-          state.byQid[e.id] = { q: e, a: null, no: state.counter, anchored: false };
+          state.byQid[e.id] = { q: e, a: null, no: state.counter, anchored: false, resolved: false, refs: [] };
           state.order.push(e.id);
         }
       } else if (e.type === "answer") {
-        // an answer may arrive before its question object (e.g. after a
-        // refresh) — keep it as an orphan and match it up later
         var hit = state.byQid[e.qid];
         if (hit) hit.a = e;
         else state["orphan_" + e.qid] = e;
+      } else if (e.type === "resolve") {
+        var t = state.byQid[e.qid];
+        if (t) t.resolved = true;
       }
-      // late question meets early answer
       var orphan = state["orphan_" + e.qid];
       if (e.type === "question" && orphan) {
         state.byQid[e.id].a = orphan;
@@ -164,17 +182,15 @@
     }
   }
 
-  // ── in-page anchors: mark text that was asked about ──
+  // ── in-text anchors: Feishu-style persistent highlight ──
   function tryAnchor(entry) {
-    if (entry.anchored) return;
+    if (entry.anchored || entry.resolved) return;
     var quote = (entry.q.quote || "").replace(/\s+/g, " ").trim();
     if (quote.length < 4) { entry.anchored = true; return; }
     var main = document.querySelector("main") || document.body;
     var walker = document.createTreeWalker(main, NodeFilter.SHOW_TEXT, null);
     var node;
     while ((node = walker.nextNode())) {
-      // collapse this text node to single spaces, keeping a
-      // collapsed-position → original-index map
       var map = buildMap(node.data);
       if (map.text.indexOf(quote) === -1) continue;
       var start = map.idx[map.text.indexOf(quote)];
@@ -184,25 +200,25 @@
         var range = document.createRange();
         range.setStart(node, start);
         range.setEnd(node, end);
-        var mark = el("mark", "qa-anchor");
+        var mark = el("mark", "qa-anchor" + (entry.a ? " answered" : ""));
         range.surroundContents(mark);
-        var ref = el("sup", "qa-ref" + (entry.a ? " answered" : ""), "❓" + entry.no);
+        var ref = el("sup", "qa-ref" + (entry.a ? " answered" : ""), (entry.a ? "✓" : "?") + entry.no);
         ref.title = entry.q.text;
-        ref.addEventListener("click", function () { openPanel(entry.q.id); });
+        ref.addEventListener("click", function () { openPanel(entry.q.id, false); });
+        mark.addEventListener("click", function () { openPanel(entry.q.id, false); });
+        entry.refs = [mark, ref];
         mark.after(ref);
         entry.anchored = true;
       } catch (err) { /* crossing element boundaries: skip the anchor,
-                        the drawer still shows the Q&A */ }
+                        the sidebar still shows the thread */ }
       return;
     }
   }
-  // "aab  c" → collapsed to "aab c", remembering each collapsed
-  // character's original index
   function buildMap(data) {
     var text = "", idx = [];
     for (var i = 0; i < data.length; i++) {
       if (/\s/.test(data[i])) {
-        if (text.slice(-1) === " ") continue; // collapse runs of whitespace
+        if (text.slice(-1) === " ") continue;
         text += " "; idx.push(i);
       } else {
         text += data[i]; idx.push(i);
@@ -211,89 +227,241 @@
     return { text: text, idx: idx };
   }
 
-  // ── UI: drawer / FAB / cards ────────────────────────
-  var fab = el("button", "qa-fab", T.fab);
-  var panel = el("div", "qa-panel");
+  // hover-link + click-to-locate (card ↔ highlighted text)
+  function linkCardToAnchor(entry, card) {
+    card.addEventListener("mouseenter", function () {
+      entry.refs.forEach(function (n) { n.classList.add("hot"); });
+    });
+    card.addEventListener("mouseleave", function () {
+      entry.refs.forEach(function (n) { n.classList.remove("hot"); });
+    });
+    card.addEventListener("click", function (ev) {
+      if (ev.target.closest("button, textarea, a")) return;
+      var a = entry.refs[0];
+      if (!a) return;
+      a.scrollIntoView({ block: "center", behavior: "smooth" });
+      a.classList.remove("flash");
+      void a.offsetWidth; // restart the animation
+      a.classList.add("flash");
+    });
+  }
+
+  // ── UI: sidebar / FAB / threads ─────────────────────
+  var fab = el("button", "qa-fab");
+  var fabIcon = el("span", "qa-fab-ico", "💬");
+  var fabCnt = el("span", "qa-fab-cnt");
+  fab.appendChild(fabIcon);
+  fab.appendChild(fabCnt);
+  var panel = el("aside", "qa-panel");
   var panelOpen = false;
 
   function renderFab() {
+    fabCnt.textContent = "";
     if (!state.online) {
       fab.classList.add("offline");
-      fab.textContent = T.fabOffline;
+      fab.title = T.fabOffline;
       return;
     }
     fab.classList.remove("offline");
-    var pending = state.order.filter(function (id) { return !state.byQid[id].a; }).length;
-    fab.textContent = T.fab;
+    fab.title = T.fab;
+    var pending = state.order.filter(function (id) { return !state.byQid[id].a && !state.byQid[id].resolved; }).length;
     if (pending > 0) {
-      var cnt = el("span", "cnt", String(pending));
-      fab.appendChild(cnt);
+      fabCnt.textContent = String(pending);
+      fabCnt.style.display = "";
+    } else {
+      fabCnt.style.display = "none";
     }
   }
 
-  function openPanel(focusQid) {
+  function openPanel(focusQid, scrollList) {
     panelOpen = true;
-    panel.style.display = "flex";
+    panel.classList.add("open");
     render();
     if (focusQid) {
       var card = panel.querySelector('[data-qid="' + focusQid + '"]');
       if (card) {
         card.scrollIntoView({ block: "center" });
         card.style.transition = "background .3s";
-        card.style.background = "#FBEDAF";
-        setTimeout(function () { card.style.background = ""; }, 1200);
+        card.classList.add("focus");
+        setTimeout(function () { card.classList.remove("focus"); }, 1200);
       }
     }
+  }
+  function closePanel() {
+    panelOpen = false;
+    panel.classList.remove("open");
+  }
+
+  function threadCard(entry) {
+    var e = entry;
+    var card = el("div", "qa-thread" + (e.resolved ? " resolved" : ""));
+    card.setAttribute("data-qid", e.q.id);
+
+    // head: avatar + name + time + resolved tag
+    var head = el("div", "qa-th-head");
+    head.appendChild(avatar("you"));
+    var meta = el("div", "qa-th-meta");
+    var nameRow = el("div", "qa-th-namerow");
+    nameRow.appendChild(el("b", null, T.you));
+    nameRow.appendChild(el("span", "qa-th-time", timeOf(e.q.ts)));
+    if (e.resolved) {
+      nameRow.appendChild(el("span", "qa-th-donetag", "✓ " + T.resolvedTag));
+    } else if (e.a) {
+      nameRow.appendChild(el("span", "qa-th-donetag ok", "✓"));
+    }
+    meta.appendChild(nameRow);
+    head.appendChild(meta);
+    card.appendChild(head);
+
+    // quoted passage (the sentence the reader selected)
+    if (e.q.quote) {
+      var bq = el("div", "qa-quote");
+      bq.textContent = e.q.quote.length > 140 ? e.q.quote.slice(0, 140) + "…" : e.q.quote;
+      card.appendChild(bq);
+    }
+
+    // the question
+    card.appendChild(el("div", "qa-text", e.q.text));
+
+    // the answer (indented reply)
+    if (e.a) {
+      var rep = el("div", "qa-reply");
+      var rhead = el("div", "qa-th-head");
+      rhead.appendChild(avatar("claude", true));
+      var rmeta = el("div", "qa-th-meta");
+      var rname = el("div", "qa-th-namerow");
+      rname.appendChild(el("b", null, T.claude));
+      rname.appendChild(el("span", "qa-th-time", timeOf(e.a.ts)));
+      rmeta.appendChild(rname);
+      rhead.appendChild(rmeta);
+      rep.appendChild(rhead);
+      var ans = el("div", "qa-text");
+      ans.innerHTML = mdLite(e.a.text);
+      rep.appendChild(ans);
+      card.appendChild(rep);
+    } else if (!e.resolved) {
+      card.appendChild(el("div", "qa-waiting", "⏳ " + T.waiting));
+    }
+
+    // actions: reply / resolve (never for resolved threads)
+    if (!e.resolved) {
+      var acts = el("div", "qa-th-actions");
+      var btnReply = el("button", "qa-act", T.reply);
+      btnReply.addEventListener("click", function () { toggleReplyBox(card, e); });
+      var btnResolve = el("button", "qa-act", T.resolve);
+      btnResolve.addEventListener("click", function () { resolveThread(e); });
+      acts.appendChild(btnReply);
+      acts.appendChild(btnResolve);
+      card.appendChild(acts);
+    }
+
+    linkCardToAnchor(e, card);
+    return card;
+  }
+
+  // inline reply composer (Feishu-style, under the thread)
+  function toggleReplyBox(card, entry) {
+    var existing = card.querySelector(".qa-replybox");
+    if (existing) { existing.remove(); return; }
+    var box = el("div", "qa-replybox");
+    var ta = document.createElement("textarea");
+    ta.placeholder = T.replyPlaceholder;
+    var row = el("div", "qa-rb-row");
+    var cancel = el("button", null, T.cancel);
+    var send = el("button", "send", T.send);
+    row.appendChild(cancel);
+    row.appendChild(send);
+    box.appendChild(ta);
+    box.appendChild(row);
+    card.appendChild(box);
+    ta.focus();
+    cancel.addEventListener("click", function () { box.remove(); });
+    function submit() {
+      var text = ta.value.trim();
+      if (!text) return;
+      send.disabled = true;
+      send.textContent = T.sending;
+      var page = decodeURIComponent(location.pathname.split("/").pop() || "");
+      fetch(API + "/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ page: page, quote: entry.q.quote || "", question: text })
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (e2) {
+          if (e2 && e2.id) {
+            ingest([e2]);
+            toast(T.sent);
+          } else throw new Error("bad response");
+        })
+        .catch(function () {
+          send.disabled = false;
+          send.textContent = T.retry;
+          toast(T.sendFail);
+        });
+    }
+    send.addEventListener("click", submit);
+    ta.addEventListener("keydown", function (ev) {
+      if ((ev.metaKey || ev.ctrlKey) && ev.key === "Enter") submit();
+    });
+  }
+
+  function resolveThread(entry) {
+    fetch(API + "/resolve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ qid: entry.q.id })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (e) {
+        if (e && e.type === "resolve") ingest([e]);
+        else throw new Error("bad response");
+      })
+      .catch(function () { toast(T.resolveFail); });
   }
 
   function render() {
     renderFab();
-    // anchors
     state.order.forEach(function (id) { tryAnchor(state.byQid[id]); });
-    // drawer
-    panel.innerHTML = "";
-    var head = el("div", "head");
-    head.appendChild(el("b", null, T.drawerTitle));
-    head.appendChild(el("span", "hint", T.drawerHint));
-    panel.appendChild(head);
-    var list = el("div", "list");
-    if (state.order.length === 0) {
-      list.appendChild(el("p", null, T.empty));
-    }
+    // resolved threads release their in-text highlight
     state.order.forEach(function (id) {
-      var e = state.byQid[id];
-      var card = el("div", "qa-card");
-      card.setAttribute("data-qid", id);
-      var meta = el("div", "meta");
-      meta.appendChild(el("span", null, "❓" + e.no + " · " + (e.q.ts || "")));
-      var st = el("span", "st " + (e.a ? "ok" : "wait"), e.a ? T.asked : T.waiting);
-      meta.appendChild(st);
-      card.appendChild(meta);
-      if (e.q.quote) {
-        var bq = el("blockquote", null);
-        bq.textContent = "“" + e.q.quote + "”";
-        card.appendChild(bq);
+      var t = state.byQid[id];
+      if (t.resolved && t.refs.length) {
+        t.refs.forEach(function (n) { n.classList.add("resolved"); });
       }
-      card.appendChild(el("p", "q", e.q.text));
-      if (e.a) {
-        var ans = el("div", "a");
-        ans.innerHTML = mdLite(e.a.text);
-        card.appendChild(ans);
-      } else {
-        card.appendChild(el("div", "wait-note", T.waitNote));
-      }
-      list.appendChild(card);
     });
+
+    panel.innerHTML = "";
+    var head = el("div", "qa-panel-head");
+    var ht = el("div", "qa-panel-title");
+    ht.appendChild(el("b", null, T.panelTitle));
+    var n = state.order.length;
+    ht.appendChild(el("span", "qa-panel-count", n ? String(n) : ""));
+    head.appendChild(ht);
+    head.appendChild(el("div", "qa-panel-sub", T.panelSub));
+    var closeBtn = el("button", "qa-panel-close", "✕");
+    closeBtn.addEventListener("click", closePanel);
+    head.appendChild(closeBtn);
+    panel.appendChild(head);
+
+    var list = el("div", "qa-list");
+    if (state.order.length === 0) {
+      list.appendChild(el("p", "qa-empty", T.empty));
+    }
+    // open threads first, resolved sink to the bottom
+    state.order
+      .slice()
+      .sort(function (a, b) { return (state.byQid[a].resolved ? 1 : 0) - (state.byQid[b].resolved ? 1 : 0); })
+      .forEach(function (id) { list.appendChild(threadCard(state.byQid[id])); });
     panel.appendChild(list);
   }
 
   fab.addEventListener("click", function () {
     if (!state.online) { toast(T.offlineHint); return; }
-    panelOpen ? (panel.style.display = "none") : openPanel();
-    panelOpen = !panelOpen;
+    panelOpen ? closePanel() : openPanel();
   });
 
-  // ── selection → ask popover ─────────────────────────
+  // ── selection → comment popover ─────────────────────
   var askBtn = el("button", "qa-askbtn", T.askBtn);
   askBtn.style.display = "none";
   var pop = null;
@@ -306,7 +474,7 @@
   });
   function positionAsk() {
     if (!state.online) return;
-    if (pop) return; // don't move the button while the popover is open
+    if (pop) return;
     var sel = window.getSelection();
     var text = sel ? sel.toString().trim() : "";
     if (!sel || sel.isCollapsed || text.length < 2) {
@@ -373,7 +541,7 @@
           if (entry && entry.id) {
             ingest([entry]);
             closePopover();
-            openPanel(entry.id);
+            openPanel(entry.id, true);
             toast(T.sent);
           } else {
             throw new Error("bad response");
@@ -408,7 +576,6 @@
   // ── start ───────────────────────────────────────────
   document.body.appendChild(fab);
   document.body.appendChild(panel);
-  panel.style.display = "none";
   document.body.appendChild(askBtn);
   renderFab();
   poll();

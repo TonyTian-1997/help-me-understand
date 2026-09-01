@@ -3,17 +3,24 @@
 The interactive layer is three cooperating pieces, all keyed off one file:
 
 ```
-browser page ──POST /ask──▶ server.py ──append──▶ notes/qa.jsonl
-                                                       ▲   │
+browser page ──POST /ask | /resolve──▶ server.py ──append──▶ notes/qa.jsonl
+                                                                 ▲   │
 Claude ◀──background task exits on new questions── qa_tool.py watch
    │                                                   │
    └──qa_tool.py answer <qid>──append──────────────────┘
 browser page ◀──GET /qa?since=N (8s poll)──────────────┘
 ```
 
-`qa.jsonl` is the single source of truth. Questions and answers are both
-append-only lines with a monotonic `seq`; pages pull increments by `seq`.
-Corrupt lines are skipped everywhere — never hand-repair the file.
+`qa.jsonl` is the single source of truth. Questions, answers, and resolve
+marks are all append-only lines with a monotonic `seq`; pages pull
+increments by `seq`. A question is **done** once it has an answer **or**
+the reader resolved it in the browser (`pending` respects both). Corrupt
+lines are skipped everywhere — never hand-repair the file.
+
+The browser presents threads Feishu-document style: the quoted passage
+stays amber-highlighted in the text, a right sidebar lists threads with
+inline reply and resolve; hover a card to light up its passage, click a
+card to jump-and-flash to it.
 
 ## Commands (cross-platform)
 
@@ -24,7 +31,7 @@ All commands go through the interpreter cached in `~/.understand/config.json`
 |---|---|
 | Liveness probe | `curl -m 1 http://127.0.0.1:<port>/health` |
 | Start server (background) | `"<py>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/server.py" --root <home>/.understand/notes --port <port>` |
-| Unanswered questions | `"<py>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/qa_tool.py" --qa <home>/.understand/notes/qa.jsonl pending` |
+| Questions still needing an answer | `"<py>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/qa_tool.py" --qa <home>/.understand/notes/qa.jsonl pending` |
 | Submit an answer (unix) | `echo "<text>" \| "<py>" …/qa_tool.py --qa <qa> answer <qid> -` |
 | Submit an answer (windows-safe) | write `<text>` to a temp UTF-8 file, then `"<py>" …/qa_tool.py --qa <qa> answer <qid> <tempfile>` |
 | Watcher (background task) | `"<py>" …/qa_tool.py --qa <qa> watch --interval 5` |

@@ -3,7 +3,9 @@
 #  qa_tool.py — Claude-side Q&A helper (pairs with server.py)
 #
 #    python3 qa_tool.py [--qa PATH] pending
-#        list unanswered questions as JSON (prints nothing
+#        list questions that still need an answer as JSON — a
+#        question counts as done once it has an answer OR the
+#        reader resolved it in the browser (prints nothing
 #        when there are none)
 #
 #    echo "answer text" | python3 qa_tool.py [--qa PATH] answer <qid> -
@@ -45,8 +47,9 @@ def load(qa_path):
 
 
 def pending_of(items):
-    answered = {i["qid"] for i in items if i.get("type") == "answer"}
-    return [i for i in items if i.get("type") == "question" and i["id"] not in answered]
+    """Questions with neither an answer nor a resolve mark."""
+    done = {i["qid"] for i in items if i.get("type") in ("answer", "resolve")}
+    return [i for i in items if i.get("type") == "question" and i["id"] not in done]
 
 
 def append(qa_path, entry):

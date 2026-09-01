@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.1.0 (2026-09-02)
+
+Interactive Q&A layer redesigned as document-style comment threads:
+
+- **Persistent passage highlights**: quoted text stays amber-highlighted in
+  the document (deepens on hover, flashes when jumped to) instead of a
+  dotted underline
+- **Right comment sidebar**: slides in from the edge, white, thread cards
+  with round avatars, name + time, quoted-passage chip, and the Claude
+  answer as an indented reply
+- **Hover-linking**: hover a card to light up its passage in the text;
+  click a card to scroll to it and flash it; click a passage to open its
+  thread
+- **Inline reply**: a reply box under each thread continues the
+  conversation with the same quoted context
+- **Resolve**: mark a thread resolved — its highlight dissolves, the card
+  sinks to the bottom, and `pending` no longer counts it; backed by a new
+  append-only `resolve` event (`POST /resolve`)
+- Circular comment FAB with an unread-answer count badge; full i18n of all
+  new strings
+
 ## 1.0.2 (2026-09-02)
 
 Critical fix: pages served over HTTP rendered unstyled.

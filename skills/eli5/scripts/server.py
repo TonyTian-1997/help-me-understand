@@ -6,11 +6,13 @@
 #  Responsibilities:
 #   ① serve the notes directory over HTTP (so pages in the
 #      browser can talk to this server)
-#   ② POST /ask    receive a select-to-ask question → append
+#   ② POST /ask     receive a select-to-ask question → append
 #      to qa.jsonl
-#   ③ GET  /qa     incremental Q&A polling (qa.jsonl is the
-#      single source of truth; Claude's answers land in the
-#      same file — the two sides meet through the file)
+#   ② POST /resolve mark a thread resolved from the browser →
+#      appended like any other event
+#   ③ GET  /qa      incremental Q&A polling (qa.jsonl is the
+#      single source of truth; answers and resolves land in the
+#      same file — the sides meet through the file)
 #   ④ GET  /health liveness probe used by the skill before
 #      deciding to start a new server process
 #
@@ -89,13 +91,27 @@ def make_handler(store, root):
             self.wfile.write(body)
 
         def do_POST(self):
-            if urlparse(self.path).path != "/ask":
+            path = urlparse(self.path).path
+            if path not in ("/ask", "/resolve"):
                 self.send_error(404)
                 return
             try:
                 payload = json.loads(
                     self.rfile.read(int(self.headers.get("Content-Length", 0)))
                 )
+                if path == "/resolve":
+                    qid = str(payload.get("qid", "")).strip()
+                    if not qid:
+                        raise ValueError("empty qid")
+                    entry = store.append(
+                        {
+                            "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+                            "type": "resolve",
+                            "qid": qid[:200],
+                        }
+                    )
+                    self._json(entry)
+                    return
                 question = str(payload.get("question", "")).strip()
                 if not question:
                     raise ValueError("empty question")
