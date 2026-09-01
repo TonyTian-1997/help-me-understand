@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.1.1 (2026-09-02)
+
+Interaction polish for the comment layer:
+
+- The ask bubble now positions **around** the quoted passage (above it
+  when there's room, below otherwise) instead of opening on top of it
+- Opening the bubble always hides the floating selection button, and
+  vice versa — they can no longer stack
+- Following up in a thread (reply box) collapses any open ask bubble
+- Sending a question releases the page selection, so the floating button
+  no longer resurrects over the freshly anchored highlight
+- Selecting text inside the sidebar (e.g. copying an answer) no longer
+  summons the button; passages hidden behind the open sidebar aren't
+  offered for comment
+
 ## 1.1.0 (2026-09-02)
 
 Interactive Q&A layer redesigned as document-style comment threads:

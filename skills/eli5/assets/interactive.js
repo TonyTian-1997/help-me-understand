@@ -276,6 +276,7 @@
   function openPanel(focusQid, scrollList) {
     panelOpen = true;
     panel.classList.add("open");
+    hideAskBtn();
     render();
     if (focusQid) {
       var card = panel.querySelector('[data-qid="' + focusQid + '"]');
@@ -361,6 +362,7 @@
 
   // inline reply composer (Feishu-style, under the thread)
   function toggleReplyBox(card, entry) {
+    closePopover(); // following up in a thread → collapse the ask bubble
     var existing = card.querySelector(".qa-replybox");
     if (existing) { existing.remove(); return; }
     var box = el("div", "qa-replybox");
@@ -472,17 +474,23 @@
   document.addEventListener("touchend", function () {
     setTimeout(positionAsk, 60);
   });
+  function hideAskBtn() { askBtn.style.display = "none"; }
+
   function positionAsk() {
     if (!state.online) return;
-    if (pop) return;
+    if (pop) return; // the bubble is open — never summon the button on top of it
     var sel = window.getSelection();
     var text = sel ? sel.toString().trim() : "";
     if (!sel || sel.isCollapsed || text.length < 2) {
-      askBtn.style.display = "none";
+      hideAskBtn();
       return;
     }
+    // selections inside the sidebar (copying an answer, composing) don't count
+    if (sel.rangeCount && panel.contains(sel.anchorNode)) { hideAskBtn(); return; }
     var rect = sel.getRangeAt(0).getBoundingClientRect();
-    if (!rect || (!rect.width && !rect.height)) { askBtn.style.display = "none"; return; }
+    if (!rect || (!rect.width && !rect.height)) { hideAskBtn(); return; }
+    // text hidden behind the open sidebar isn't selectable for comment
+    if (panelOpen && rect.right > window.innerWidth - 348) { hideAskBtn(); return; }
     askBtn.style.display = "block";
     var x = Math.min(rect.left + rect.width / 2 - 55, window.innerWidth - 120);
     var y = rect.top - 40 < 12 ? rect.bottom + 10 : rect.top - 40;
@@ -496,18 +504,19 @@
   askBtn.addEventListener("click", function () {
     var sel = window.getSelection();
     var quote = sel ? sel.toString().trim() : "";
-    if (!quote) return;
-    askBtn.style.display = "none";
-    openPopover(quote, askBtn.style.left, askBtn.style.top);
+    if (!quote || !sel.rangeCount) return;
+    hideAskBtn();
+    openPopover(quote, sel.getRangeAt(0).getBoundingClientRect());
   });
 
-  function closePopover() { if (pop) { pop.remove(); pop = null; } }
+  function closePopover() {
+    if (pop) { pop.remove(); pop = null; }
+    hideAskBtn();
+  }
 
-  function openPopover(quote, x, y) {
+  function openPopover(quote, rect) {
     closePopover();
     pop = el("div", "qa-pop");
-    pop.style.left = Math.max(10, Math.min(parseFloat(x), window.innerWidth - 360)) + "px";
-    pop.style.top = Math.max(10, parseFloat(y)) + "px";
     if (quote) {
       var q = el("p", "quote", "“" + (quote.length > 90 ? quote.slice(0, 90) + "…" : quote) + "”");
       pop.appendChild(q);
@@ -522,6 +531,14 @@
     row.appendChild(send);
     pop.appendChild(row);
     document.body.appendChild(pop);
+    // place above the selection when there's room, else below — never on
+    // top of the quoted text itself
+    var h = pop.offsetHeight || 200;
+    var left = Math.max(10, Math.min(rect.left + rect.width / 2 - 170, window.innerWidth - 352));
+    var top = rect.top - h - 14;
+    if (top < 10) top = Math.min(rect.bottom + 12, window.innerHeight - h - 10);
+    pop.style.left = left + "px";
+    pop.style.top = Math.max(10, top) + "px";
     ta.focus();
 
     cancel.addEventListener("click", closePopover);
@@ -541,6 +558,9 @@
           if (entry && entry.id) {
             ingest([entry]);
             closePopover();
+            // release the page selection so the floating button doesn't
+            // resurrect over the freshly anchored highlight
+            try { window.getSelection().removeAllRanges(); } catch (err) {}
             openPanel(entry.id, true);
             toast(T.sent);
           } else {
