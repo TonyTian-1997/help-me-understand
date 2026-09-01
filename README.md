@@ -75,6 +75,8 @@ The plugin ships one skill (`eli5`), two zero-dependency Python scripts, and the
 
 **Does the browser Q&A need Claude Code open?** Yes — Claude answers while your session runs (a watcher nudges it when a question arrives). Notes themselves are static and readable forever.
 
+**UI language?** The comment layer follows the browser language (English by default, Chinese for zh locales). To force one, add `data-lang="en"` or `data-lang="zh"` to the `interactive.js` script tag in a note.
+
 ## Development
 
 ```shell

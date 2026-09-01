@@ -180,7 +180,7 @@ def page_html(slug, body, title, lede, lang, date, port, rail):
     )
 
 
-def index_html(catalog, lang, date):
+def index_html(catalog, lang, date, port):
     T = t(lang)
     cards = ""
     for slug, e in sorted(catalog.items(), key=lambda kv: kv[1].get("date", ""), reverse=True):
@@ -211,9 +211,9 @@ def index_html(catalog, lang, date):
         "      %s\n"
         "    </footer>\n\n"
         "  </div>\n</main>\n"
-        '<script defer src="assets/interactive.js"></script>\n'
+        '<script defer src="assets/interactive.js" data-port="%s"></script>\n'
         "</body>\n</html>\n"
-    ) % (esc(lang), esc(T["index_title"]), esc(date), esc(T["index_title"]), esc(T["index_lede"]), cards, esc(date), esc(T["colophon2"]))
+    ) % (esc(lang), esc(T["index_title"]), esc(date), esc(T["index_title"]), esc(T["index_lede"]), cards, esc(date), esc(T["colophon2"]), esc(str(port)))
 
 
 def cmd_build(args):
@@ -250,7 +250,7 @@ def cmd_build(args):
         "lang": lang,
     }
     save_json(home / "catalog.json", catalog)
-    (notes / "index.html").write_text(index_html(catalog, lang, date), encoding="utf-8", newline="\n")
+    (notes / "index.html").write_text(index_html(catalog, lang, date, port), encoding="utf-8", newline="\n")
 
     out = {
         "ok": True,

@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.1 (2026-09-02)
+
+- **UI language audit**: verified every comment-layer string is fully
+  localized (key sets symmetric en/zh, zero CJK reachable outside the
+  zh locale block) — English browsers get an all-English UI
+- New `data-lang="en|zh"` attribute on the `interactive.js` tag forces a
+  UI language regardless of browser locale
+- Generated `index.html` now carries the server port on its script tag
+  (same-origin serving made this invisible; file:// opens now work too)
+- Body template states explicitly that the eli5 tag line must be written
+  in the note's own language
+
 ## 1.4.0 (2026-09-02)
 
 Answers that keep their context, quality, and speed:

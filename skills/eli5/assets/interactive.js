@@ -72,6 +72,10 @@
     }
   };
   var T = (function () {
+    // explicit override first (data-lang="en|zh" on the script tag),
+    // then browser language, English default
+    var forced = document.currentScript && document.currentScript.getAttribute("data-lang");
+    if (forced) return String(forced).toLowerCase().indexOf("zh") === 0 ? L10N["zh-CN"] : L10N.en;
     var langs = (navigator.languages && navigator.languages.length)
       ? navigator.languages
       : [navigator.language || "en"];

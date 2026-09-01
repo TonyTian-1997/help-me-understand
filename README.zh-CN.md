@@ -74,6 +74,8 @@ Claude： 📖 笔记已生成 → http://127.0.0.1:8899/http-caching.html
 
 **浏览器提问需要 Claude Code 一直开着吗？** 需要——哨兵只在你会话存活期间唤起 Claude 作答。笔记本身是静态文件，随时可看。
 
+**界面语言？** 评论层跟随浏览器语言（默认英文，中文环境自动切换）。想强制某种语言，在笔记的 `interactive.js` 标签上加 `data-lang="zh"` 或 `data-lang="en"`。
+
 ## 开发
 
 ```shell
