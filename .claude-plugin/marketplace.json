@@ -1,0 +1,19 @@
+{
+  "name": "help-me-understand",
+  "metadata": {
+    "description": "ELI5 explanations with an interactive HTML notebook"
+  },
+  "owner": {
+    "name": "TonyTian",
+    "url": "https://github.com/TonyTian-1997"
+  },
+  "plugins": [
+    {
+      "name": "help-me-understand",
+      "source": "./",
+      "description": "ELI5 explanations with an interactive HTML notebook: terminal answer, annotated note, follow-up Q&A in the browser.",
+      "category": "learning",
+      "keywords": ["eli5", "explain", "learning", "notes"]
+    }
+  ]
+}

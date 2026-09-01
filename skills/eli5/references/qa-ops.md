@@ -1,0 +1,68 @@
+# Q&A server & watcher operations
+
+The interactive layer is three cooperating pieces, all keyed off one file:
+
+```
+browser page ──POST /ask──▶ server.py ──append──▶ notes/qa.jsonl
+                                                       ▲   │
+Claude ◀──background task exits on new questions── qa_tool.py watch
+   │                                                   │
+   └──qa_tool.py answer <qid>──append──────────────────┘
+browser page ◀──GET /qa?since=N (8s poll)──────────────┘
+```
+
+`qa.jsonl` is the single source of truth. Questions and answers are both
+append-only lines with a monotonic `seq`; pages pull increments by `seq`.
+Corrupt lines are skipped everywhere — never hand-repair the file.
+
+## Commands (cross-platform)
+
+All commands go through the interpreter cached in `~/.understand/config.json`
+(`python3` / `python` / `py -3` — probe once, reuse forever).
+
+| Purpose | Command |
+|---|---|
+| Liveness probe | `curl -m 1 http://127.0.0.1:<port>/health` |
+| Start server (background) | `"<py>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/server.py" --root <home>/.understand/notes --port <port>` |
+| Unanswered questions | `"<py>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/qa_tool.py" --qa <home>/.understand/notes/qa.jsonl pending` |
+| Submit an answer (unix) | `echo "<text>" \| "<py>" …/qa_tool.py --qa <qa> answer <qid> -` |
+| Submit an answer (windows-safe) | write `<text>` to a temp UTF-8 file, then `"<py>" …/qa_tool.py --qa <qa> answer <qid> <tempfile>` |
+| Watcher (background task) | `"<py>" …/qa_tool.py --qa <qa> watch --interval 5` |
+
+## Watcher lifecycle — the one rule
+
+`watch` polls `pending` every 5s and **exits 0, printing the questions as
+one JSON line, the moment any exist**. That exit is the wake-up signal: the
+session gets a background-task notification and can answer.
+
+- Run exactly **one** watcher. Before starting one, note whether another is
+  already running; if in doubt, start fresh — the old one exits when it
+  sees the same questions, which is harmless.
+- After answering everything, **restart the watcher**. An unrestarted
+  watcher is the #1 cause of "the browser stopped answering".
+- `--max-wait` (default 2h) makes orphaned watchers exit quietly, so a
+  closed session never leaks an infinite loop.
+
+## Windows notes
+
+- Paths: resolve the home directory from the OS (`%USERPROFILE%`), never a
+  hardcoded `~`. The scripts themselves use `pathlib` + `expanduser`, so
+  passing a plain absolute path to `--root`/`--qa` is enough.
+- Never pipe answer text through `echo` on Windows (codepage mangling):
+  always use the temp-file form for non-ASCII answers.
+- The server binds `127.0.0.1` only. If a firewall prompt appears the
+  first time, it is safe to allow — nothing is exposed beyond localhost.
+- Port 8899 busy → try 8899+i (i ≤ 5), persist the winner in
+  `config.json`, and regenerate nothing — pages read the port from
+  `data-port` at generation time, so only future notes carry it; tell the
+  user to reopen old notes via the server URL.
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Page shows "offline" FAB | server not running | Step 4 of the skill; check probe URL |
+| Question sent, nothing happens | watcher dead | restart `watch`; verify with `pending` |
+| Answer written but page blank | answer text empty | `qa_tool.py` refuses empty answers by design — rewrite with content |
+| `bad request` on POST | empty question text | client-side guard normally prevents; ignore |
+| Two answers to one qid | duplicate answer run | harmless — drawer shows the last by `seq` |
