@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.5.1 (2026-09-02)
+
+Lifecycle corrected: resident server, invisible offline.
+
+- **Resident by default** (`--idle-timeout 0`): the server holds its
+  localhost port like a language server until reboot — note URLs never
+  die, the comment bubble is always alive. Explicit release via the new
+  `qa_tool.py stop` (pidfile-based); `--idle-timeout <sec>` remains
+  available for auto-release deployments. A browser page cannot spawn a
+  process, so click-to-revive inside the page isn't physically possible;
+  residency removes the need for it
+- **Offline is invisible**: when the server is ever unreachable, the
+  comment layer hides itself completely — no gray "offline" button, no
+  banner; the note reads as a clean static page and comments reappear
+  the moment the server answers
+- Server writes a pidfile; launcher/bin copies refresh on regeneration
+
 ## 1.5.0 (2026-09-02)
 
 Port lifecycle — release when nobody's reading, revive in one action:

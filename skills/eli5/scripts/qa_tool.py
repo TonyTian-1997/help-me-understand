@@ -26,7 +26,9 @@
 # ─────────────────────────────────────────────────────────
 import argparse
 import json
+import os
 import re
+import signal
 import sys
 import time
 from pathlib import Path
@@ -171,6 +173,7 @@ def main():
     w.add_argument("--context", action="store_true", help="embed each question's note context")
     w.add_argument("--interval", type=float, default=2, help="polling seconds (default: 2)")
     w.add_argument("--max-wait", type=float, default=7200, help="give up after this many seconds (default: 7200)")
+    sub.add_parser("stop", help="stop the notes server (explicit port release)")
     args = ap.parse_args()
 
     qa = Path(args.qa).expanduser()
@@ -203,6 +206,31 @@ def main():
             },
         )
         emit({"ok": True, "qid": args.qid})
+
+    elif args.cmd == "stop":
+        pid_file = qa.parent.parent / "server.pid"
+        if not pid_file.exists():
+            emit({"stopped": False, "reason": "no pidfile — server not running"})
+            sys.exit(1)
+        try:
+            pid = int(pid_file.read_text(encoding="ascii").strip())
+        except (OSError, ValueError):
+            pid_file.unlink(missing_ok=True)
+            emit({"stopped": False, "reason": "corrupt pidfile (removed)"})
+            sys.exit(1)
+        try:
+            os.kill(pid, 0)  # liveness probe; raises if dead
+        except OSError:
+            pid_file.unlink(missing_ok=True)
+            emit({"stopped": False, "reason": "pid %d already dead (stale pidfile removed)" % pid})
+            sys.exit(0)
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError as e:
+            emit({"stopped": False, "reason": str(e)})
+            sys.exit(1)
+        pid_file.unlink(missing_ok=True)
+        emit({"stopped": True, "pid": pid})
 
     elif args.cmd == "watch":
         deadline = time.time() + args.max_wait

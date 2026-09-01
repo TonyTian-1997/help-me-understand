@@ -18,12 +18,14 @@
 #
 #  Usage:
 #    python3 server.py [--root DIR] [--port N] [--idle-timeout SEC]
-#  Port release: with the default --idle-timeout 3600, the server exits
-#  once no request arrives for an hour — any note open in a browser
-#  keeps it alive via the 8s poll, so it only releases the port when
-#  nobody is reading. The skill's health probe restarts it in ~1s, and
-#  the double-click launcher in ~/.understand/ revives it without
-#  Claude at all. Pass --idle-timeout 0 to hold the port forever.
+#  Lifecycle: the server is RESIDENT by default — like a language
+#  server, it holds 127.0.0.1:<port> until the machine reboots or
+#  `qa_tool.py stop` stops it explicitly (a pidfile lands next to the
+#  notes dir). Readers never see a dead URL. Prefer auto-release?
+#  Pass --idle-timeout <seconds>: with no requests for that long the
+#  server exits (open note pages heartbeat it via the 8s poll), and the
+#  skill's probe or the double-click launcher in ~/.understand/ revives
+#  it in ~1s.
 #  Cross-platform: Python 3.9+ standard library only
 #  (macOS / Linux / Windows).
 # ─────────────────────────────────────────────────────────
@@ -166,9 +168,10 @@ def main():
     ap = argparse.ArgumentParser(description="Help Me Understand notes server")
     ap.add_argument("--root", default=None, help="notes directory to serve (default: ~/.understand/notes)")
     ap.add_argument("--port", type=int, default=8899, help="port to listen on (default: 8899)")
-    ap.add_argument("--idle-timeout", type=float, default=3600,
+    ap.add_argument("--idle-timeout", type=float, default=0,
                     help="exit after this many seconds with no requests (any open note page "
-                         "keeps it alive via the 8s poll); 0 = run forever (default: 3600)")
+                         "keeps it alive via the 8s poll); 0 = resident until reboot or "
+                         "`qa_tool.py stop` (default: 0)")
     args = ap.parse_args()
 
     root = Path(args.root).expanduser() if args.root else Path.home() / ".understand" / "notes"
@@ -178,6 +181,10 @@ def main():
     addr = ("127.0.0.1", args.port)
     httpd = ThreadingHTTPServer(addr, make_handler(store, root))
     httpd.daemon_threads = True
+
+    # pidfile so `qa_tool.py stop` can release the port explicitly
+    pid_path = root.parent / "server.pid"
+    pid_path.write_text(str(os.getpid()), encoding="ascii")
 
     if args.idle_timeout > 0:
         def idle_watch():
@@ -190,14 +197,21 @@ def main():
                     return
         threading.Thread(target=idle_watch, daemon=True).start()
 
-    print("Help Me Understand notes server: http://%s:%d/ (root: %s, idle exit: %ss)"
-          % (addr[0], addr[1], root, int(args.idle_timeout) if args.idle_timeout > 0 else "off"), flush=True)
+    print("Help Me Understand notes server: http://%s:%d/ (root: %s, idle exit: %ss, pid %d)"
+          % (addr[0], addr[1], root, int(args.idle_timeout) if args.idle_timeout > 0 else "off", os.getpid()), flush=True)
     try:
         httpd.serve_forever()
-        httpd.server_close()
     except OSError as e:
         print("failed to listen on port %d: %s" % (args.port, e), file=sys.stderr, flush=True)
-        sys.exit(1)
+    finally:
+        try:
+            httpd.server_close()
+        except OSError:
+            pass
+        try:
+            pid_path.unlink()
+        except OSError:
+            pass
 
 
 if __name__ == "__main__":

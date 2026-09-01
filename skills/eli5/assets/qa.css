@@ -185,8 +185,6 @@ sup.qa-ref.resolved { display: none; }
   padding: 0 4px;
   box-sizing: border-box;
 }
-.qa-fab.offline { color: var(--fz-faint); cursor: default; opacity: .6; }
-.qa-fab.offline:hover { transform: none; }
 
 /* ── right sidebar (slides in from the edge) ───────────── */
 .qa-panel {

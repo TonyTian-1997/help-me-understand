@@ -21,7 +21,6 @@
     en: {
       askBtn: "Comment",
       fab: "Comments",
-      fabOffline: "Comments (offline)",
       tip: "📖 Select any text to ask a question",
       panelTitle: "Comments",
       panelSub: "select text in the document to ask",
@@ -41,13 +40,11 @@
       waitNote: "⏳ Sent to Claude — the answer will appear here…",
       sendFail: "Send failed — is the notes server running?",
       resolveFail: "Could not mark as resolved",
-      offlineHint: "The notes server is not running. Restart it from your Claude Code session.",
       placeholder: "What would you like to ask about this passage? (⌘/Ctrl+Enter to send)"
     },
     "zh-CN": {
       askBtn: "评论",
       fab: "评论",
-      fabOffline: "评论（离线）",
       tip: "📖 划选任意文字即可提问",
       panelTitle: "评论",
       panelSub: "划选正文任意文字即可提问",
@@ -67,7 +64,6 @@
       waitNote: "⏳ 已发给 Claude，回答稍后出现在这里…",
       sendFail: "发送失败：本地服务器没有在跑？",
       resolveFail: "标记解决失败",
-      offlineHint: "笔记服务器没在跑：回到 Claude Code 会话重新生成即可。",
       placeholder: "关于这段话想问什么？（⌘/Ctrl+Enter 发送）"
     }
   };
@@ -178,6 +174,9 @@
     if (on === state.online) return;
     state.online = on;
     renderFab();
+    // offline is invisible by design: the note reads as a clean static
+    // page with no comment UI, and it reappears the moment the server
+    // answers again — the reader never sees an "offline" state
     if (on && !setOnline.tipped) {
       setOnline.tipped = true;
       toast(T.tip);
@@ -258,13 +257,11 @@
   var panelOpen = false;
 
   function renderFab() {
-    fabCnt.textContent = "";
     if (!state.online) {
-      fab.classList.add("offline");
-      fab.title = T.fabOffline;
+      fab.style.display = "none"; // offline = the whole layer is invisible
       return;
     }
-    fab.classList.remove("offline");
+    fab.style.display = "";
     fab.title = T.fab;
     var pending = state.order.filter(function (id) { return !state.byQid[id].a && !state.byQid[id].resolved; }).length;
     if (pending > 0) {
@@ -294,7 +291,7 @@
   function closePanel() {
     panelOpen = false;
     panel.classList.remove("open");
-    fab.style.display = ""; // bring the round button back
+    renderFab(); // bring the round button back (only when online)
     setTimeout(positionAsk, 30); // a live selection re-summons the button at once
   }
 
@@ -462,7 +459,6 @@
   }
 
   fab.addEventListener("click", function () {
-    if (!state.online) { toast(T.offlineHint); return; }
     panelOpen ? closePanel() : openPanel();
   });
 

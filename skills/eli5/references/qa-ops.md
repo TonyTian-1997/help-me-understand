@@ -30,6 +30,7 @@ All commands go through the interpreter cached in `~/.understand/config.json`
 | Purpose | Command |
 |---|---|
 | Liveness probe | `curl -m 1 http://127.0.0.1:<port>/health` |
+| Stop the server (explicit port release) | `"<py>" …/qa_tool.py --qa <qa> stop` (reads the pidfile, SIGTERMs, cleans up) |
 | Install double-click launchers | `"<py>" …/note_tool.py launchers --interpreter "<py>" --port <port> --scripts <plugin scripts dir>` (writes `~/.understand/bin/` + `Start Notes.command` / `.bat`) |
 | Start server (background) | `"<py>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/server.py" --root <home>/.understand/notes --port <port>` |
 | Build a note from its body | `"<py>" …/note_tool.py build <slug> --title "one\|two" --lede "…" --lang <lg>` (also updates catalog + index; safe to re-run as the body grows) |
@@ -50,19 +51,24 @@ built page first. ~150 words is the default budget.
 
 ## Port lifecycle
 
-The server exits on its own after **1h with no requests** (open note
-pages keep it alive via the 8s poll; `--idle-timeout 0` = hold forever).
-When the port is cold: the skill's probe restarts it in ~1s, the
-double-click launcher revives it without Claude, and already-loaded
-pages stay readable (comments just show offline). If the reader hits a
-dead URL with no launcher, any note also opens directly from
-`~/.understand/notes/` via file://.
+The server is **resident by default** — like a language server, it holds
+`127.0.0.1:<port>` until the machine reboots or it is stopped
+explicitly, so readers never meet a dead URL. Release paths:
+`qa_tool.py stop` (explicit, via the pidfile), reboot, or run the
+server with `--idle-timeout <sec>` to auto-exit when nobody has polled
+for that long (open pages heartbeat it via the 8s poll). If the port is
+ever cold, the skill's probe restarts it in ~1s and the double-click
+launcher revives it without Claude. Should the server ever be down
+while a page is open, offline is invisible by design: the comment layer
+hides itself and reappears when the server answers again; notes also
+open directly from `~/.understand/notes/` via file://.
 
 ## Watcher lifecycle — the one rule
 
-`watch` polls `pending` every 5s and **exits 0, printing the questions as
-one JSON line, the moment any exist**. That exit is the wake-up signal: the
-session gets a background-task notification and can answer.
+`watch` polls `pending` every 2s (default) and **exits 0, printing the
+questions as one JSON line, the moment any exist**. That exit is the
+wake-up signal: the session gets a background-task notification and can
+answer.
 
 - Run exactly **one** watcher. Before starting one, note whether another is
   already running; if in doubt, start fresh — the old one exits when it
@@ -90,7 +96,7 @@ session gets a background-task notification and can answer.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Page shows "offline" FAB | server not running | Step 4 of the skill; check probe URL |
+| Comment UI missing entirely | server not running (offline is invisible by design) | Step 2 probe of the skill; check the URL with `curl -m 1 …/health` |
 | Question sent, nothing happens | watcher dead | restart `watch`; verify with `pending` |
 | Answer written but page blank | answer text empty | `qa_tool.py` refuses empty answers by design — rewrite with content |
 | `bad request` on POST | empty question text | client-side guard normally prevents; ignore |

@@ -70,7 +70,7 @@ Claude： 📖 笔记已生成 → http://127.0.0.1:8899/http-caching.html
 
 **端口被占？** 从 8899 起自动向后找可用端口，结果缓存在 `~/.understand/config.json`。
 
-**隔了一阵子笔记链接打不开了？** 服务器在整整一小时无人访问后会自动释放端口（开着笔记页时会靠轮询一直续命——这是「不永久占端口」的取舍）。不用打开 Claude 就能复活：双击 **`~/.understand/Start Notes.command`**（macOS）或 **`Start Notes.bat`**（Windows），它会拉起服务器并打开笔记目录。已打开的旧标签页内容照常可读，只是评论暂停到复活为止。
+**服务器会一直跑着吗？** 它像语言服务器一样常驻——开机期间永远在线，笔记链接永不失效。释放端口的途径：重启电脑、执行 `qa_tool.py stop`、或以 `--idle-timeout` 启动自动空闲退出。重启电脑后双击 **`~/.understand/Start Notes.command`**（macOS）/ **`Start Notes.bat`**（Windows），或对 Claude 提一句任何笔记，约 1 秒全部恢复。
 
 **支持 Windows 吗？** 支持。脚本纯标准库，技能自动探测 `python`/`py -3`，回答通过临时文件写入以避开控制台编码坑。
 

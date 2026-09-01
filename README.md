@@ -71,7 +71,7 @@ The plugin ships one skill (`eli5`), two zero-dependency Python scripts, and the
 
 **Port conflict?** Auto-falls-forward from 8899; the working port is cached in `~/.understand/config.json`.
 
-**The note URL stopped working after a break?** The server releases its port after an hour with nobody reading (open tabs keep it alive; the trade-off for not holding the port forever). Revive it without Claude: double-click **`~/.understand/Start Notes.command`** (macOS) or **`Start Notes.bat`** (Windows) — it restarts the server and opens your notes. Already-open tabs keep rendering; only commenting pauses until revival.
+**Does the server run forever?** It's resident like a language server — always there while your machine is up, so note URLs never die. It releases the port on reboot, via `qa_tool.py stop`, or if started with `--idle-timeout`. After a reboot, double-click **`~/.understand/Start Notes.command`** (macOS) / **`Start Notes.bat`** (Windows) — or just mention any note to Claude — and everything is back in ~1s.
 
 **Windows support?** Yes — scripts are pure-stdlib, the skill auto-detects `python`/`py -3`, and answers are written via temp files to dodge console codepage issues.
 
