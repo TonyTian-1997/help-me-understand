@@ -33,7 +33,8 @@ All commands go through the interpreter cached in `~/.understand/config.json`
 | Stop the server (explicit port release) | `"<py>" …/qa_tool.py --qa <qa> stop` (reads the pidfile, SIGTERMs, cleans up) |
 | Install double-click launchers | `"<py>" …/note_tool.py launchers --interpreter "<py>" --port <port> --scripts <plugin scripts dir>` (writes `~/.understand/bin/` + `Start Notes.command` / `.bat`) |
 | Start server (background) | `"<py>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/server.py" --root <home>/.understand/notes --port <port>` |
-| Build a note from its body | `"<py>" …/note_tool.py build <slug> --title "one\|two" --lede "…" --lang <lg>` (also updates catalog + index; safe to re-run as the body grows) |
+| Outline page in ~1s (fast-first) | `"<py>" …/note_tool.py start <slug> --title "one\|two" --lede "…" --sections "T1\|T2\|…\|Glossary" --lang <lg>` (draft page + URL immediately; browser auto-refreshes while sections land) |
+| Build a note from its body | `"<py>" …/note_tool.py build <slug> --title "one\|two" --lede "…" --lang <lg>` (also updates catalog + index; safe to re-run as the body grows; add `--draft` while still writing, omit on the final build so the page settles) |
 | Quality gate | `"<py>" …/note_tool.py lint <slug>` (exit 1 + ✘ report on any unmet quota or structural break) |
 | Questions still needing an answer | `"<py>" …/qa_tool.py --qa <qa> pending --context` (embeds each question's note context: title, lede, the section containing the quote, glossary terms the question hits) |
 | Submit an answer (unix) | `echo "<text>" \| "<py>" …/qa_tool.py --qa <qa> answer <qid> -` |

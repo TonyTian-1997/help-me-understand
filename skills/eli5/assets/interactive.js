@@ -40,7 +40,8 @@
       waitNote: "⏳ Sent to Claude — the answer will appear here…",
       sendFail: "Send failed — is the notes server running?",
       resolveFail: "Could not mark as resolved",
-      placeholder: "What would you like to ask about this passage? (⌘/Ctrl+Enter to send)"
+      placeholder: "What would you like to ask about this passage? (⌘/Ctrl+Enter to send)",
+      writing: "✍️ Writing — this page updates itself"
     },
     "zh-CN": {
       askBtn: "评论",
@@ -64,7 +65,8 @@
       waitNote: "⏳ 已发给 Claude，回答稍后出现在这里…",
       sendFail: "发送失败：本地服务器没有在跑？",
       resolveFail: "标记解决失败",
-      placeholder: "关于这段话想问什么？（⌘/Ctrl+Enter 发送）"
+      placeholder: "关于这段话想问什么？（⌘/Ctrl+Enter 发送）",
+      writing: "✍️ 正在书写——本页会自动更新"
     }
   };
   var T = (function () {
@@ -604,6 +606,29 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { t.style.opacity = "0"; }, 3800);
     setTimeout(function () { t.remove(); }, 4300);
+  }
+
+  // ── draft pages grow while being written ────────────
+  // A draft note (hmu-draft meta) reloads itself whenever the server has
+  // a newer build — the reader watches sections land without touching
+  // anything. The final build drops the meta and the page settles.
+  if (document.querySelector('meta[name="hmu-draft"]')) {
+    var badge = el("div", "hmu-writing-badge", T.writing);
+    document.body.appendChild(badge);
+    var prevLen = null;
+    setInterval(function () {
+      fetch(location.href, { cache: "no-store" })
+        .then(function (r) { return r.text(); })
+        .then(function (txt) {
+          var finished = txt.indexOf('name="hmu-draft"') === -1;
+          if (prevLen !== null && (finished || Math.abs(txt.length - prevLen) > 40)) {
+            location.reload();
+            return;
+          }
+          prevLen = txt.length;
+        })
+        .catch(function () {});
+    }, 5000);
   }
 
   // ── start ───────────────────────────────────────────

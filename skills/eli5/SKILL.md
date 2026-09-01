@@ -92,34 +92,43 @@ needs Python 3.9+.
    the server and open the index. Tell the user about them once, on the
    very first setup only.
 
-## Step 3 — Write the note body, build, lint
+## Step 3 — Note: page up in seconds, then grow it
+
+Speed is part of the product. Never let the user wait in silence for a
+finished note — hand them a living page almost immediately.
 
 1. Slugify the topic (`http-caching`, `recoil-vs-redux`). An existing
    body in `src/<slug>.html` means an update — edit it, don't start over.
-2. Write the body to `~/.understand/src/<slug>.html` following
-   [references/html-style.md](references/html-style.md): sections +
-   evidence chain ONLY (no html/head/body/rail/hero/index — the tool
-   owns all of that), meeting every element quota. Cite real `file:line`
-   evidence for code subjects; authoritative docs otherwise.
-3. Build (title uses `|` for the two hero lines; the lede carries one
-   `<mark class="hl">` clause; the port comes from config.json):
+2. Plan the section titles (5–7, closing glossary last — ~one line, no
+   elaboration), then create the outline page and **give the user the
+   URL immediately**:
 
 ```
-"<interpreter>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/note_tool.py" build <slug> --title "Line one|Line two" --lede "…<mark class=\"hl\">…</mark>…" --lang <lang>
+"<interpreter>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/note_tool.py" start <slug> --title "Line one|Line two" --lede "…<mark class=\"hl\">…</mark>…" --sections "Title 1|Title 2|…|Glossary" --lang <lang>
 ```
 
-4. **Progressive writing for long notes**: after writing the first 2–3
-   sections, build once and give the user the URL immediately (the page
-   grows on refresh as you append), then write the remaining sections
-   into the body and rebuild.
-5. Run the gate and fix every ✘ until it passes — never waive a failure:
+   Reply right then, two lines: note title + URL, noting the page
+   updates itself while writing. The URL in ~15 seconds beats a perfect
+   note in four minutes.
+3. Write the real section bodies into `src/<slug>.html` (replace the
+   outline placeholders section by section, following
+   [references/html-style.md](references/html-style.md) — sections +
+   evidence chain ONLY; the tool owns all skeleton HTML), and rebuild as
+   you go so the page keeps growing:
+
+```
+"<interpreter>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/note_tool.py" build <slug> --draft --title … --lede … --lang <lang>
+```
+
+4. Final build (**without** `--draft` — the page stops auto-refreshing),
+   then run the gate and fix every ✘ until it passes — never waive it:
 
 ```
 "<interpreter>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/note_tool.py" lint <slug>
 ```
 
-6. Reply in two lines maximum: note title (user's language) + URL from
-   the build output. Nothing else — the note carries the explanation.
+5. Close with a single short line (e.g. "✅ done — 7 sections, glossary
+   included"). The URL was already delivered; don't repeat the plan.
 
 ## Step 4 — Watch for browser questions
 

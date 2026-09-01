@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.6.0 (2026-09-02)
+
+Fast-first note generation — the URL in seconds, the page that grows:
+
+- **`note_tool.py start`**: plans 5–7 section titles, writes an outline
+  body, and builds a draft page in ~0.1s — the reader gets the URL in
+  the first seconds of the reply instead of after minutes of silent
+  writing
+- **Self-updating drafts**: draft pages carry an `hmu-draft` meta; the
+  interactive layer shows a "writing" badge and reloads itself whenever
+  a newer build lands (server-to-server size diff, 5s check). The final
+  build drops the flag and the page settles
+- `build --draft` marks interim rebuilds; the skill's Step 3 now
+  mandates the fast-first flow: outline → URL immediately → grow
+  sections with `--draft` rebuilds → final build + lint → one-line close
+- Per-section writing placeholders localized (en/zh)
+
 ## 1.5.1 (2026-09-02)
 
 Lifecycle corrected: resident server, invisible offline.

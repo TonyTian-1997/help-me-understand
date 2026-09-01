@@ -411,8 +411,31 @@ sup.qa-ref.resolved { display: none; }
   transition: opacity .4s ease;
 }
 
+/* ── draft state: page still being written ─────────────── */
+.hmu-writing {
+  color: var(--fz-faint);
+  font-family: var(--mono);
+  font-size: 13px;
+  margin: 14px 0;
+  animation: qa-pulse 1.6s ease infinite;
+}
+.hmu-writing-badge {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 65;
+  font: 600 12.5px var(--sans);
+  color: var(--fz-ink);
+  background: #FFFDF8;
+  border: 1px solid var(--fz-line);
+  border-radius: 999px;
+  padding: 6px 16px;
+  box-shadow: 0 6px 18px -8px rgba(31,35,41,.3);
+}
+
 /* hide all interactive parts when printing */
-@media print { .qa-fab, .qa-panel, .qa-askbtn, .qa-pop, .qa-toast, sup.qa-ref { display: none !important; } .qa-anchor { background: transparent; } }
+@media print { .qa-fab, .qa-panel, .qa-askbtn, .qa-pop, .qa-toast, .hmu-writing-badge, sup.qa-ref { display: none !important; } .qa-anchor { background: transparent; } }
 
 /* narrow screens: sidebar overlays fully */
 @media (max-width: 640px) {
