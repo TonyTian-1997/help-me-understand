@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.2 (2026-09-02)
+
+- **Cache fix**: the notes server now sends `Cache-Control: no-cache`, so
+  browsers always revalidate `interactive.js` / `qa.css` — asset updates
+  arrive on the next reload instead of being served stale from heuristic
+  cache (this is why the 1.1.1 collision fixes didn't reach some open pages)
+- Opening a thread's inline reply box now also releases the page
+  selection, and the floating comment button stays hidden while composing
+
 ## 1.1.1 (2026-09-02)
 
 Interaction polish for the comment layer:

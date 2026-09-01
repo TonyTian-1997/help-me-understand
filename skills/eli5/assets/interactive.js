@@ -365,6 +365,9 @@
     closePopover(); // following up in a thread → collapse the ask bubble
     var existing = card.querySelector(".qa-replybox");
     if (existing) { existing.remove(); return; }
+    // release any leftover page selection so the floating button can't
+    // resurrect while composing
+    try { window.getSelection().removeAllRanges(); } catch (err) {}
     var box = el("div", "qa-replybox");
     var ta = document.createElement("textarea");
     ta.placeholder = T.replyPlaceholder;
@@ -479,6 +482,7 @@
   function positionAsk() {
     if (!state.online) return;
     if (pop) return; // the bubble is open — never summon the button on top of it
+    if (panel.querySelector(".qa-replybox")) { hideAskBtn(); return; } // composing
     var sel = window.getSelection();
     var text = sel ? sel.toString().trim() : "";
     if (!sel || sel.isCollapsed || text.length < 2) {

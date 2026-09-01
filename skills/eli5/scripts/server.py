@@ -71,11 +71,14 @@ def make_handler(store, root):
             super().__init__(*args, directory=str(root), **kw)
 
         # Localhost self-use + allow pages opened via file:// to reach us
-        # (otherwise select-to-ask would silently fail)
+        # (otherwise select-to-ask would silently fail). no-cache keeps
+        # browsers revalidating assets, so JS/CSS updates arrive on the
+        # next reload instead of being served stale from heuristic cache.
         def end_headers(self):
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.send_header("Cache-Control", "no-cache")
             super().end_headers()
 
         def do_OPTIONS(self):
