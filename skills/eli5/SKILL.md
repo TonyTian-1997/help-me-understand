@@ -16,9 +16,9 @@ Home directory for everything this skill creates: `~/.understand/`
 
 ```
 ~/.understand/
-├── notes/          # <slug>.html notes + index.html + qa.jsonl
-├── assets/         # style.css, qa.css, interactive.js, note-template.html
-└── config.json     # {"interpreter": "...", "port": 8899}
+├── notes/              # <slug>.html notes + index.html + qa.jsonl
+│   └── assets/         # style.css, qa.css, interactive.js, note-template.html
+└── config.json         # {"interpreter": "...", "port": 8899}
 ```
 
 Plugin files (read-only, referenced as `${CLAUDE_PLUGIN_ROOT}`):
@@ -49,13 +49,16 @@ its own — the note is a keepsake, not a prerequisite.
 ## Step 3 — Write the note
 
 1. **First run only**: copy the four files from
-   `${CLAUDE_PLUGIN_ROOT}/skills/eli5/assets/` to `~/.understand/assets/`
-   (never modify the plugin's copies; the local copies are what notes
-   reference, so plugin updates can't break old notes).
+   `${CLAUDE_PLUGIN_ROOT}/skills/eli5/assets/` to
+   `~/.understand/notes/assets/` — assets MUST live **inside** the served
+   notes directory: pages reference them as `assets/style.css`, and the
+   server cannot resolve anything outside its root (never modify the
+   plugin's copies; local copies keep old notes working across plugin
+   updates).
 2. Slugify the topic (`http-caching`, `docker-namespaces`,
    `recoil-vs-redux`). If `~/.understand/notes/<slug>.html` exists, **update
    it in place** — merge new sections, don't duplicate the note.
-3. Write the note from `~/.understand/assets/note-template.html`,
+3. Write the note from `~/.understand/notes/assets/note-template.html`,
    following the design vocabulary **and the element quotas** in
    [references/html-style.md](references/html-style.md): left rail with
    section anchors, eli5 analogy boxes, ≥1 SVG diagram, ≥2 tables (closing

@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.2 (2026-09-02)
+
+Critical fix: pages served over HTTP rendered unstyled.
+
+- **Assets now live inside the served directory** (`~/.understand/notes/assets/`)
+  and pages reference them as `assets/…`. Previously assets sat one level
+  above the server root, so the browser's stylesheet request resolved to a
+  404 and every page loaded as raw unstyled HTML (file:// viewing masked
+  the bug)
+- Skill guidance now states the invariant explicitly: a note must never
+  reference anything outside the served directory
+- README architecture diagrams updated
+
 ## 1.0.1 (2026-09-02)
 
 Visual overhaul of the note design system — notes now match the full

@@ -54,7 +54,7 @@ Everything runs on `127.0.0.1` only — nothing leaves your machine. Uninstallin
 │ /eli5 <topic>          │      │ notes/<slug>.html   the note       │
 │ → two-layer answer     │─────▶│ notes/index.html    catalog        │
 │ → note + server + watch│      │ notes/qa.jsonl      Q&A log        │
-└────────────────────────┘      │ assets/…            styles & JS    │
+└────────────────────────┘      │ notes/assets/…      styles & JS    │
                                 └──────────────┬─────────────────────┘
 ┌─ browser ──────────────┐                     │ 127.0.0.1:<port>
 │ select text → ask      │──POST /ask─────────▶│ (server.py, stdlib) │

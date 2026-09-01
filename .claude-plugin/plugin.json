@@ -1,6 +1,6 @@
 {
   "name": "help-me-understand",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "ELI5 explanations with an interactive HTML notebook: get a plain-language answer in your terminal, a beautifully annotated note in the browser, and ask follow-up questions by selecting any sentence on the page.",
   "author": {
     "name": "TonyTian",
@@ -9,5 +9,14 @@
   "homepage": "https://github.com/TonyTian-1997/help-me-understand",
   "repository": "https://github.com/TonyTian-1997/help-me-understand",
   "license": "MIT",
-  "keywords": ["eli5", "explain", "learning", "study-notes", "html", "documentation", "education", "interactive"]
+  "keywords": [
+    "eli5",
+    "explain",
+    "learning",
+    "study-notes",
+    "html",
+    "documentation",
+    "education",
+    "interactive"
+  ]
 }

@@ -4,7 +4,7 @@ Every note is one self-contained HTML page styled like a paper textbook a
 friendly tutor has already annotated: a left rail outlining the chapter,
 highlighter over the sentences that matter, a pencil note in the margin,
 footnotes proving every claim. The stylesheet
-(`~/.understand/assets/style.css`) ships the entire vocabulary; your job is
+(`~/.understand/notes/assets/style.css`) ships the entire vocabulary; your job is
 choosing where each element goes — **and using enough of them. A note that
 is mostly paragraphs with one yellow box per section is a failed note.**
 
@@ -37,8 +37,10 @@ main.main > div.content
 └── footer.colophon             2 lines, in the note's language
 ```
 
-Head loads `../assets/style.css` then `../assets/qa.css`; before `</body>`
-goes `<script defer src="../assets/interactive.js" data-port="PORT"></script>`
+Head loads `assets/style.css` then `assets/qa.css` (both live in
+`~/.understand/notes/assets/`, **inside** the served directory — a page
+must never reference anything outside it); before `</body>`
+goes `<script defer src="assets/interactive.js" data-port="PORT"></script>`
 (pull the real port from `~/.understand/config.json`).
 
 ## The left rail
