@@ -498,8 +498,6 @@
 
   function positionAsk() {
     if (!state.online) return;
-    // sidebar open → no floating button at all, wherever the selection is
-    if (panelOpen) { hideAskBtn(); return; }
     if (pop) { hideAskBtn(); return; } // bubble open — never stack the button
     if (panel.querySelector(".qa-replybox")) { hideAskBtn(); return; } // composing
     var sel = window.getSelection();
@@ -512,8 +510,13 @@
     if (sel.rangeCount && panel.contains(sel.anchorNode)) { hideAskBtn(); return; }
     var rect = sel.getRangeAt(0).getBoundingClientRect();
     if (!rect || (!rect.width && !rect.height)) { hideAskBtn(); return; }
+    // commenting while reading comments is allowed; only passages hidden
+    // behind the open sidebar are off-limits, and the button never
+    // crosses the sidebar's edge
+    var panelLeft = panelOpen ? panel.getBoundingClientRect().left : Infinity;
+    if (rect.right > panelLeft - 8) { hideAskBtn(); return; }
     askBtn.style.display = "block";
-    var x = Math.min(rect.left + rect.width / 2 - 55, window.innerWidth - 120);
+    var x = Math.min(rect.left + rect.width / 2 - 55, panelLeft - 130, window.innerWidth - 120);
     var y = rect.top - 40 < 12 ? rect.bottom + 10 : rect.top - 40;
     askBtn.style.left = Math.max(10, x) + "px";
     askBtn.style.top = y + "px";
@@ -536,8 +539,9 @@
   }
 
   function openPopover(quote, rect) {
-    if (panelOpen) return; // sidebar open → no bubble, whatever called this
     closePopover();
+    var openRB = panel.querySelector(".qa-replybox"); // one composing state
+    if (openRB) openRB.remove();
     pop = el("div", "qa-pop");
     if (quote) {
       var q = el("p", "quote", "“" + (quote.length > 90 ? quote.slice(0, 90) + "…" : quote) + "”");
@@ -554,9 +558,10 @@
     pop.appendChild(row);
     document.body.appendChild(pop);
     // place above the selection when there's room, else below — never on
-    // top of the quoted text itself
+    // top of the quoted text, and never crossing the sidebar's edge
     var h = pop.offsetHeight || 200;
-    var left = Math.max(10, Math.min(rect.left + rect.width / 2 - 170, window.innerWidth - 352));
+    var panelLeft = panelOpen ? panel.getBoundingClientRect().left : Infinity;
+    var left = Math.max(10, Math.min(rect.left + rect.width / 2 - 170, panelLeft - 352));
     var top = rect.top - h - 14;
     if (top < 10) top = Math.min(rect.bottom + 12, window.innerHeight - h - 10);
     pop.style.left = left + "px";

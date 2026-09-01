@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.6.2 (2026-09-02)
+
+- **Commenting while reading comments works again**: selecting a passage
+  with the sidebar open now summons the comment button — the earlier
+  blanket hide made "reading comments" and "asking a new question"
+  mutually exclusive. The exclusion is now spatial instead of modal:
+  passages hidden behind the sidebar are off-limits, and both the button
+  and the ask bubble are clamped to never cross the sidebar's edge
+- Opening the ask bubble while a thread's reply box is open closes the
+  reply box — one composing state at a time
+
 ## 1.6.1 (2026-09-02)
 
 - Layer exclusion is now enforced inside the functions, not by event
