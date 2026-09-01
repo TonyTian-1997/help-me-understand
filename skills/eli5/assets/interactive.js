@@ -30,7 +30,7 @@
       you: "You",
       claude: "Claude",
       waiting: "waiting for Claude…",
-      reply: "Reply",
+      reply: "Ask a question",
       resolve: "Resolve",
       replyPlaceholder: "Reply with another question…",
       send: "Send",
@@ -56,7 +56,7 @@
       you: "你",
       claude: "Claude",
       waiting: "等待 Claude 回答…",
-      reply: "回复",
+      reply: "继续提问",
       resolve: "解决",
       replyPlaceholder: "继续追问…",
       send: "发送",
@@ -467,11 +467,25 @@
   askBtn.style.display = "none";
   var pop = null;
 
+  // safety net: a finished selection doesn't always end with a mouseup we
+  // see (drag released outside the window, keyboard selection, browser
+  // quirks) — selectionchange covers all of them. Debounced, and skipped
+  // while a drag is in progress so the button only appears on release.
+  var mouseDown = false;
+  document.addEventListener("mousedown", function () { mouseDown = true; });
   document.addEventListener("mouseup", function () {
+    mouseDown = false;
     setTimeout(positionAsk, 30);
   });
   document.addEventListener("touchend", function () {
     setTimeout(positionAsk, 60);
+  });
+  var selTimer = null;
+  document.addEventListener("selectionchange", function () {
+    clearTimeout(selTimer);
+    selTimer = setTimeout(function () {
+      if (!mouseDown) positionAsk();
+    }, 200);
   });
   function hideAskBtn() { askBtn.style.display = "none"; }
 

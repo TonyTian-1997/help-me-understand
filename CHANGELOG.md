@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.4.0 (2026-09-02)
+
+Answers that keep their context, quality, and speed:
+
+- **Context-injected answering**: `qa_tool.py pending/watch --context`
+  embeds each question's note context — title, lede, the section
+  containing the quoted passage (whitespace/tag-insensitive match), and
+  glossary terms the question hits (head-word matching, aliases
+  stripped). Answers stay inside the note's metaphor system even after
+  context compaction or a session restart, with zero extra tool calls
+- **Answering discipline** in the skill: never answer without context,
+  reuse the note's metaphor nouns, drawer-safe formatting only
+  (paragraphs / bold / code / lists — no headers or tables), ~150-word
+  default budget
+- **Faster wake-up**: watcher polling 5s → 2s
+- **Session hygiene**: first touch of anything note-related runs
+  `pending --context` and clears the backlog; vague note references
+  resolve via catalog.json
+- **Selection button reliability**: a `selectionchange` safety net
+  (debounced, suppressed mid-drag) now shows the comment button even
+  when the mouseup is lost (drag released outside the window, keyboard
+  selection, browser quirks)
+- The thread reply action is labeled "Ask a question" / 「继续提问」,
+  matching what it actually does
+
 ## 1.3.2 (2026-09-02)
 
 - **Resolve now deletes the thread**: resolving removes the comment card

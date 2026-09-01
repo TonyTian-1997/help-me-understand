@@ -33,10 +33,19 @@ All commands go through the interpreter cached in `~/.understand/config.json`
 | Start server (background) | `"<py>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/server.py" --root <home>/.understand/notes --port <port>` |
 | Build a note from its body | `"<py>" …/note_tool.py build <slug> --title "one\|two" --lede "…" --lang <lg>` (also updates catalog + index; safe to re-run as the body grows) |
 | Quality gate | `"<py>" …/note_tool.py lint <slug>` (exit 1 + ✘ report on any unmet quota or structural break) |
-| Questions still needing an answer | `"<py>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/qa_tool.py" --qa <home>/.understand/notes/qa.jsonl pending` |
+| Questions still needing an answer | `"<py>" …/qa_tool.py --qa <qa> pending --context` (embeds each question's note context: title, lede, the section containing the quote, glossary terms the question hits) |
 | Submit an answer (unix) | `echo "<text>" \| "<py>" …/qa_tool.py --qa <qa> answer <qid> -` |
 | Submit an answer (windows-safe) | write `<text>` to a temp UTF-8 file, then `"<py>" …/qa_tool.py --qa <qa> answer <qid> <tempfile>` |
-| Watcher (background task) | `"<py>" …/qa_tool.py --qa <qa> watch --interval 5` |
+| Watcher (background task) | `"<py>" …/qa_tool.py --qa <qa> watch --context --interval 2` |
+
+## Answering rules
+
+The watcher's `--context` payload is the ground truth for an answer:
+work from the embedded section and terms, reuse the note's metaphor
+nouns, and keep answers in the drawer-safe subset (paragraphs,
+`**bold**`, `` `code` ``, `- ` lists — no headers/tables/links). Never
+answer without context; for legacy notes without a body file, read the
+built page first. ~150 words is the default budget.
 
 ## Watcher lifecycle — the one rule
 

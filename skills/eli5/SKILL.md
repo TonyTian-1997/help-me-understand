@@ -39,7 +39,8 @@ In priority order:
    the subject; read surrounding files as needed.
 2. **Explicit topic** — the slash-command argument or the user's message.
 3. **Follow-up on an existing note** — load the note and continue from it
-   (see Follow-ups below).
+   (see Follow-ups below). Resolve vague references ("the networking
+   note") via `~/.understand/catalog.json`, never by guessing.
 
 Write in the language the user asked in (Chinese → Chinese note).
 
@@ -66,10 +67,11 @@ On the first run (or if the probe fails) do, in order:
 "<interpreter>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/server.py" --root <home>/.understand/notes --port <port>
 ```
 
-4. Start the watcher as a background task (it must not block):
+4. Start the watcher as a background task (it must not block; see
+   Step 4 for the context-injecting form):
 
 ```
-"<interpreter>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/qa_tool.py" --qa <home>/.understand/notes/qa.jsonl watch --interval 5
+"<interpreter>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/qa_tool.py" --qa <home>/.understand/notes/qa.jsonl watch --context --interval 2
 ```
 
 Steps 3–4 start independent processes: launch them in one parallel tool
@@ -108,18 +110,42 @@ needs Python 3.9+.
 
 ## Step 4 — Watch for browser questions
 
-The watcher from Step 2 exits and prints pending questions when they
-arrive. For each: write an answer meeting the answer-quality rubric and
-submit it:
+Launch the watcher with context injection (2s polling):
+
+```
+"<interpreter>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/qa_tool.py" --qa <home>/.understand/notes/qa.jsonl watch --context --interval 2
+```
+
+When it exits, each printed question carries its `context`: the note's
+title + lede, the **section containing the quoted passage**, and the
+glossary terms the question mentions. Answer from that — **never answer
+a browser question without the note's context in hand**; if `context`
+says no body file was found (legacy note), Read the built page first.
+This keeps answers inside the note's metaphor system even after context
+compaction or a session restart, and needs zero extra tool calls.
+
+Answering discipline (the drawer renders paragraphs, `**bold**`,
+`` `code` ``, and `- ` lists ONLY — no headers, tables, or links):
+
+- Reuse the note's metaphor nouns (the `toys`) — stay in its world.
+- Answer the question first; keep it ≤150 words unless depth is truly
+  needed; gloss any new term inline.
+- Cite `file:line` when the note did.
+
+Submit each answer (on Windows, write to a temp UTF-8 file and pass the
+path instead of piping):
 
 ```
 echo "<answer text>" | "<interpreter>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/qa_tool.py" --qa <home>/.understand/notes/qa.jsonl answer <qid> -
 ```
 
-On Windows, write the answer to a temp UTF-8 file and pass the path.
 Summarize in one line in the chat. **After answering, always restart the
-watcher.** At the start of any session where the user mentions a note,
-check once for unanswered questions (`qa_tool.py ... pending`).
+watcher.**
+
+**Session-start hygiene**: the first time a session touches anything
+note-related, run `qa_tool.py --qa … pending --context` and clear any
+backlog immediately. For vague references ("the networking note"),
+resolve them via `~/.understand/catalog.json`, never by guessing.
 
 ## Answer quality rubric
 
