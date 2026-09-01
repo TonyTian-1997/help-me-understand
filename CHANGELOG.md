@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.6.1 (2026-09-02)
+
+- Layer exclusion is now enforced inside the functions, not by event
+  order: `openPanel` closes any open ask bubble regardless of the path
+  that opened the sidebar, and `openPopover` refuses while the sidebar
+  is open (a keyboard or touch entry could previously slip past the
+  mousedown-based closing)
+- The draft "writing" badge hides while the sidebar is open
+- Draft auto-refresh holds off while a sidebar is open or a question is
+  being composed, so a finished draft never reloads the page out from
+  under an in-progress comment
+
 ## 1.6.0 (2026-09-02)
 
 Fast-first note generation — the URL in seconds, the page that grows:

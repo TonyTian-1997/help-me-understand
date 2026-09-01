@@ -275,10 +275,13 @@
   }
 
   function openPanel(focusQid, scrollList) {
+    closePopover(); // whatever path opened the sidebar, the bubble is gone
     panelOpen = true;
     panel.classList.add("open");
     hideAskBtn();
     fab.style.display = "none"; // the round button overlaps the sidebar — step aside
+    var wb = document.querySelector(".hmu-writing-badge");
+    if (wb) wb.style.display = "none";
     render();
     if (focusQid) {
       var card = panel.querySelector('[data-qid="' + focusQid + '"]');
@@ -294,6 +297,8 @@
     panelOpen = false;
     panel.classList.remove("open");
     renderFab(); // bring the round button back (only when online)
+    var wb = document.querySelector(".hmu-writing-badge");
+    if (wb) wb.style.display = "";
     setTimeout(positionAsk, 30); // a live selection re-summons the button at once
   }
 
@@ -531,6 +536,7 @@
   }
 
   function openPopover(quote, rect) {
+    if (panelOpen) return; // sidebar open → no bubble, whatever called this
     closePopover();
     pop = el("div", "qa-pop");
     if (quote) {
@@ -621,8 +627,10 @@
         .then(function (r) { return r.text(); })
         .then(function (txt) {
           var finished = txt.indexOf('name="hmu-draft"') === -1;
+          // never reload out from under an open sidebar or an in-flight
+          // question — recheck on the next tick instead
           if (prevLen !== null && (finished || Math.abs(txt.length - prevLen) > 40)) {
-            location.reload();
+            if (!panelOpen && !pop) location.reload();
             return;
           }
           prevLen = txt.length;
