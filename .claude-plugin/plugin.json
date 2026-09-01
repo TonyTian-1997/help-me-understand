@@ -1,7 +1,7 @@
 {
   "name": "help-me-understand",
-  "version": "1.1.4",
-  "description": "ELI5 explanations with an interactive HTML notebook: get a plain-language answer in your terminal, a beautifully annotated note in the browser, and ask follow-up questions by selecting any sentence on the page.",
+  "version": "1.2.0",
+  "description": "ELI5 explanations as an interactive HTML notebook: every answer becomes a beautifully annotated textbook-style note in your browser, and you ask follow-up questions by selecting any sentence on the page.",
   "author": {
     "name": "TonyTian",
     "url": "https://github.com/TonyTian-1997"

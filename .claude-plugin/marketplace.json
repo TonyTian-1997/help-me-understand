@@ -11,7 +11,7 @@
     {
       "name": "help-me-understand",
       "source": "./",
-      "description": "ELI5 explanations with an interactive HTML notebook: terminal answer, annotated note, follow-up Q&A in the browser.",
+      "description": "ELI5 explanations as an interactive HTML notebook: annotated textbook-style notes, follow-up Q&A by selecting text in the browser.",
       "category": "learning",
       "keywords": ["eli5", "explain", "learning", "notes"]
     }

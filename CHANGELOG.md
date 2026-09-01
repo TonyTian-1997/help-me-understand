@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2.0 (2026-09-02)
+
+**The note is the answer.** The chat explanation is gone — the skill now
+writes the annotated note directly and replies with a two-line
+confirmation (title + URL). Cuts 2–3K output tokens and 30–60s of latency
+from every invocation; the terminal was duplicating what the note says
+better.
+
+- SKILL.md restructured to a four-step pipeline (identify → note →
+  server → watcher); the quality rubric now governs notes and browser
+  answers alike
+- Chat follow-ups stay brief in-terminal and get their full ELI5
+  treatment appended to the note
+- README (en/zh) and marketplace descriptions updated to match
+
 ## 1.1.4 (2026-09-02)
 
 - Code comments in the bundled JS/CSS and the ops reference now describe

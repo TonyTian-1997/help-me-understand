@@ -1,20 +1,19 @@
 # Help Me Understand
 
-**ELI5 explanations you can keep, interrogate, and re-read** — a [Claude Code](https://code.claude.com) plugin that answers in plain language (everyday analogy first, engineering reality second), saves the explanation as a beautifully annotated HTML note, and lets you ask follow-up questions by simply **selecting text in the browser**.
+**ELI5 explanations you can keep, interrogate, and re-read** — a [Claude Code](https://code.claude.com) plugin that turns any topic or selected code into a beautifully annotated, textbook-style HTML note (everyday analogy first, engineering reality second), and lets you ask follow-up questions by simply **selecting text in the browser**.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-blue) [中文文档](README.zh-CN.md)
 
 ```text
 you: /help-me-understand:eli5 how does HTTP caching work?
 
-claude:  🧸 Layer 1 — the corner store remembers you…            (in your terminal)
-         🔧 Layer 2 — Cache-Control / ETag / 304…
-         🕳 dig deeper: 1. ETag computation  2. CDNs  3. Vary
-         📖 note saved → http://127.0.0.1:8899/http-caching.html
+claude:  📖 note saved → http://127.0.0.1:8899/http-caching.html
+         (the note IS the answer — no chat wall-of-text)
 
-browser: you select "ETag" in the note → "why can it break caching?"
-         → the answer appears in the page's Q&A drawer, annotated
-           at the exact sentence you asked about
+browser: a full annotated-textbook page: analogy boxes, SVG diagrams,
+         tree-shaped traces, evidence-chain footnotes, glossary…
+         select "ETag" → "why can it break caching?"
+         → the answer appears as a comment thread on that sentence
 ```
 
 ## Install
@@ -33,9 +32,8 @@ Then use it:
 
 ## What you get
 
-1. **A terminal answer, immediately** — two layers: a coherent everyday metaphor for the whole topic, then the engineering reality mapped back onto it. Every term explained in plain words on first use. 2–4 numbered threads to pull next.
-2. **A note worth keeping** — a self-contained HTML page in the annotated-textbook style: highlighter over the must-not-miss sentences, margin notes, an evidence chain of `file:line` citations when the subject is code. All notes accumulate under `~/.understand/notes/` with an index page; they work offline, print cleanly, and never expire.
-3. **Select-to-ask follow-ups** — open the note in your browser, highlight any sentence, ask anything. Claude answers into the page (blue dotted anchors mark the passages you've asked about, a drawer keeps the whole Q&A history) — and equally answers follow-ups typed back in the terminal.
+1. **A note worth keeping, fast** — the explanation lands directly as a self-contained HTML page in the annotated-textbook style: analogy boxes, highlighter over the must-not-miss sentences, margin notes, SVG diagrams, an evidence chain of `file:line` citations when the subject is code, a closing glossary. All notes accumulate under `~/.understand/notes/` with an index page; they work offline, print cleanly, and never expire.
+2. **Select-to-ask follow-ups** — open the note in your browser, highlight any sentence, ask anything. Claude answers into the page as a comment thread (persistent highlights, a right sidebar, inline reply, resolve) — and equally answers follow-ups typed back in the terminal.
 
 ## Requirements
 
