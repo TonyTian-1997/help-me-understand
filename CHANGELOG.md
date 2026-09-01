@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.2 (2026-09-02)
+
+- **Resolve now deletes the thread**: resolving removes the comment card
+  (and its replies) from the sidebar outright, instead of dimming it and
+  sinking it to the bottom; the in-passage highlight and badge dissolve as
+  before. When every thread on a page is resolved the sidebar shows a
+  small "all resolved" state, and the header count tracks open threads
+  only. Dead resolved-state styling removed
+
 ## 1.3.1 (2026-09-02)
 
 - **Per-page comment threads**: each note's sidebar now shows only the

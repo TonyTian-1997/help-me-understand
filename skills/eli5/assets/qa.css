@@ -254,8 +254,6 @@ sup.qa-ref.resolved { display: none; }
 }
 .qa-thread:hover { background: var(--fz-hover); }
 .qa-thread.focus { background: #EDF3FF; }
-.qa-thread.resolved { opacity: .58; }
-.qa-thread.resolved:hover { opacity: .8; }
 
 .qa-th-head { display: flex; align-items: flex-start; gap: 9px; }
 .qa-th-meta { flex: 1; min-width: 0; }

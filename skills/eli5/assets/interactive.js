@@ -26,13 +26,12 @@
       panelTitle: "Comments",
       panelSub: "select text in the document to ask",
       empty: "No comments yet. Select any passage and click “Comment”.",
+      allDone: "All threads resolved 🎉",
       you: "You",
       claude: "Claude",
       waiting: "waiting for Claude…",
       reply: "Reply",
       resolve: "Resolve",
-      resolved: "Resolved",
-      resolvedTag: "Resolved",
       replyPlaceholder: "Reply with another question…",
       send: "Send",
       cancel: "Cancel",
@@ -53,12 +52,12 @@
       panelTitle: "评论",
       panelSub: "划选正文任意文字即可提问",
       empty: "还没有评论。划选正文里的任意一段文字，点「评论」。",
+      allDone: "全部已解决 🎉",
       you: "你",
       claude: "Claude",
       waiting: "等待 Claude 回答…",
       reply: "回复",
       resolve: "解决",
-      resolvedTag: "已解决",
       replyPlaceholder: "继续追问…",
       send: "发送",
       cancel: "取消",
@@ -296,20 +295,18 @@
   }
 
   function threadCard(entry) {
-    var e = entry;
-    var card = el("div", "qa-thread" + (e.resolved ? " resolved" : ""));
+    var e = entry; // resolved threads are never rendered (resolve deletes)
+    var card = el("div", "qa-thread");
     card.setAttribute("data-qid", e.q.id);
 
-    // head: avatar + name + time + resolved tag
+    // head: avatar + name + time
     var head = el("div", "qa-th-head");
     head.appendChild(avatar("you"));
     var meta = el("div", "qa-th-meta");
     var nameRow = el("div", "qa-th-namerow");
     nameRow.appendChild(el("b", null, T.you));
     nameRow.appendChild(el("span", "qa-th-time", timeOf(e.q.ts)));
-    if (e.resolved) {
-      nameRow.appendChild(el("span", "qa-th-donetag", "✓ " + T.resolvedTag));
-    } else if (e.a) {
+    if (e.a) {
       nameRow.appendChild(el("span", "qa-th-donetag ok", "✓"));
     }
     meta.appendChild(nameRow);
@@ -342,21 +339,19 @@
       ans.innerHTML = mdLite(e.a.text);
       rep.appendChild(ans);
       card.appendChild(rep);
-    } else if (!e.resolved) {
+    } else {
       card.appendChild(el("div", "qa-waiting", "⏳ " + T.waiting));
     }
 
-    // actions: reply / resolve (never for resolved threads)
-    if (!e.resolved) {
-      var acts = el("div", "qa-th-actions");
-      var btnReply = el("button", "qa-act", T.reply);
-      btnReply.addEventListener("click", function () { toggleReplyBox(card, e); });
-      var btnResolve = el("button", "qa-act", T.resolve);
-      btnResolve.addEventListener("click", function () { resolveThread(e); });
-      acts.appendChild(btnReply);
-      acts.appendChild(btnResolve);
-      card.appendChild(acts);
-    }
+    // actions: reply / resolve (resolve deletes the whole thread)
+    var acts = el("div", "qa-th-actions");
+    var btnReply = el("button", "qa-act", T.reply);
+    btnReply.addEventListener("click", function () { toggleReplyBox(card, e); });
+    var btnResolve = el("button", "qa-act", T.resolve);
+    btnResolve.addEventListener("click", function () { resolveThread(e); });
+    acts.appendChild(btnReply);
+    acts.appendChild(btnResolve);
+    card.appendChild(acts);
 
     linkCardToAnchor(e, card);
     return card;
@@ -441,7 +436,7 @@
     var head = el("div", "qa-panel-head");
     var ht = el("div", "qa-panel-title");
     ht.appendChild(el("b", null, T.panelTitle));
-    var n = state.order.length;
+    var n = state.order.filter(function (id) { return !state.byQid[id].resolved; }).length;
     ht.appendChild(el("span", "qa-panel-count", n ? String(n) : ""));
     head.appendChild(ht);
     head.appendChild(el("div", "qa-panel-sub", T.panelSub));
@@ -451,14 +446,14 @@
     panel.appendChild(head);
 
     var list = el("div", "qa-list");
+    var open = state.order.filter(function (id) { return !state.byQid[id].resolved; });
     if (state.order.length === 0) {
       list.appendChild(el("p", "qa-empty", T.empty));
+    } else if (open.length === 0) {
+      list.appendChild(el("p", "qa-empty", T.allDone));
     }
-    // open threads first, resolved sink to the bottom
-    state.order
-      .slice()
-      .sort(function (a, b) { return (state.byQid[a].resolved ? 1 : 0) - (state.byQid[b].resolved ? 1 : 0); })
-      .forEach(function (id) { list.appendChild(threadCard(state.byQid[id])); });
+    // resolved threads are removed outright — resolve deletes the thread
+    open.forEach(function (id) { list.appendChild(threadCard(state.byQid[id])); });
     panel.appendChild(list);
   }
 
