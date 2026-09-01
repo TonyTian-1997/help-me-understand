@@ -5,149 +5,152 @@ description: Explain any concept, system, or selected code the ELI5 way (everyda
 
 # ELI5 — Help Me Understand
 
-Every invocation runs the full pipeline: an annotated HTML note on disk, a
-local notes server, and a watcher that catches questions the reader asks by
-selecting text in the browser. **The note is the answer** — do not write the
-explanation in the chat. Keep the chat to a two-line confirmation (topic +
-note URL) delivered when the note is on disk.
+Every invocation runs the full pipeline: environment → note → watcher.
+**The note is the answer** — do not write the explanation in the chat.
+Keep the chat to a two-line confirmation (topic + note URL).
 
-Home directory for everything this skill creates: `~/.understand/`
-(Windows: `%USERPROFILE%\.understand\` — always resolve via the OS home).
+**The body/build split is the core discipline**: you write ONLY the note
+body (sections + evidence chain) into `~/.understand/src/<slug>.html`;
+`note_tool.py build` assembles the page — skeleton, rail (derived from
+your section titles), related notes, catalog, and index are generated,
+never hand-written. `note_tool.py lint` is the quality gate; a note that
+hasn't passed lint is not done.
+
+Home directory for everything: `~/.understand/` (Windows:
+`%USERPROFILE%\.understand\` — always resolve via the OS home).
 
 ```
 ~/.understand/
-├── notes/              # <slug>.html notes + index.html + qa.jsonl
-│   └── assets/         # style.css, qa.css, interactive.js, note-template.html
+├── notes/              # built pages + index.html + qa.jsonl
+│   └── assets/         # style.css, qa.css, interactive.js, body-template.html
+├── src/                # note BODIES (what you write): <slug>.html
+├── catalog.json        # maintained by note_tool.py build
 └── config.json         # {"interpreter": "...", "port": 8899}
 ```
 
 Plugin files (read-only, referenced as `${CLAUDE_PLUGIN_ROOT}`):
-`skills/eli5/assets/` and `skills/eli5/scripts/` under the plugin root.
+`skills/eli5/assets/`, `skills/eli5/scripts/` under the plugin root.
 
 ## Step 1 — Identify the target and language
 
-Determine what to explain, in this priority order:
+In priority order:
 
-1. **Editor selection** — if the message contains an IDE selection
-   (`ide_selection` context), that code is the subject. Read surrounding
-   files as needed to explain it in context.
+1. **Editor selection** — an IDE selection (`ide_selection` context) is
+   the subject; read surrounding files as needed.
 2. **Explicit topic** — the slash-command argument or the user's message.
-3. **Follow-up on an existing note** — if the user references a previous
-   note ("go deeper on 2", "what about X from the docker note"), load
-   `~/.understand/notes/<slug>.html` and continue from it.
+3. **Follow-up on an existing note** — load the note and continue from it
+   (see Follow-ups below).
 
-Always write the note **in the language the user asked in** (Chinese
-question → Chinese note, English → English).
+Write in the language the user asked in (Chinese → Chinese note).
 
-## Step 2 — Write the note
+## Step 2 — Ensure the environment (fast path: one probe)
 
-1. **First run only**: copy the four files from
-   `${CLAUDE_PLUGIN_ROOT}/skills/eli5/assets/` to
-   `~/.understand/notes/assets/` — assets MUST live **inside** the served
-   notes directory: pages reference them as `assets/style.css`, and the
-   server cannot resolve anything outside its root (never modify the
-   plugin's copies; local copies keep old notes working across plugin
-   updates).
-2. Slugify the topic (`http-caching`, `docker-namespaces`,
-   `recoil-vs-redux`). If `~/.understand/notes/<slug>.html` exists, **update
-   it in place** — merge new sections, don't duplicate the note.
-3. Write the note from `~/.understand/notes/assets/note-template.html`,
-   following the design vocabulary **and the element quotas** in
-   [references/html-style.md](references/html-style.md): left rail with
-   section anchors, eli5 analogy boxes, ≥1 SVG diagram, ≥2 tables (closing
-   glossary always), ≥1 tree-shaped trace block, 2–3 deep dives, callouts
-   with specific tag text. A thin note (a yellow box + two paragraphs per
-   section) is a **bug** — the reader should see a richly annotated
-   textbook page, not an essay. Cite real `file:line` evidence whenever the
-   subject is code; link docs otherwise. Set `data-port` on the interactive
-   `<script>` to the port from Step 3.
-4. Update the catalog: keep a `catalog.json` inside `~/.understand/`
-   mapping slug → `{title, lede, date, lang}` and regenerate
-   `notes/index.html` from it after every change (use the `.toc-cards`
-   classes).
-5. Tell the user, in two lines maximum: the note title (in their language)
-   and `http://127.0.0.1:<port>/<slug>.html`. Nothing else — the note
-   carries the explanation.
-
-## Step 3 — Ensure the notes server
-
-Read `~/.understand/config.json` (create on first run). Probe with a 1s
-timeout before starting anything — a running server must be reused:
+Read `~/.understand/config.json`. If it has an `interpreter` and a `port`,
+the fast path is a single liveness probe — a running server is reused:
 
 ```
 curl -m 1 http://127.0.0.1:<port>/health
 ```
 
-If not up, resolve the Python interpreter (probe in order, cache the result
-in `config.json` under `interpreter`): `python3 --version` → `python
---version` → `py -3 --version`. Then start in the background:
+On the first run (or if the probe fails) do, in order:
+
+1. Copy the four files from `${CLAUDE_PLUGIN_ROOT}/skills/eli5/assets/`
+   to `~/.understand/notes/assets/` (assets MUST live inside the served
+   directory; never modify the plugin's copies).
+2. Resolve the Python interpreter, probing `python3 --version` →
+   `python --version` → `py -3 --version`; cache it in `config.json`.
+3. Start the server in the background (port 8899, or +1…+5 if taken;
+   persist the working port):
 
 ```
 "<interpreter>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/server.py" --root <home>/.understand/notes --port <port>
 ```
 
-If the port is taken by something else, try port+1 (up to +5) and persist
-the working port in `config.json`. If **no interpreter exists at all**:
-skip this step and the next, keep the note (it still reads fine from
-`file://`), and tell the user plainly: interactive Q&A needs Python 3.9+.
-
-## Step 4 — Watch for browser questions
-
-Run as a **background task** (it must not block the conversation):
+4. Start the watcher as a background task (it must not block):
 
 ```
 "<interpreter>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/qa_tool.py" --qa <home>/.understand/notes/qa.jsonl watch --interval 5
 ```
 
-When the watcher exits and reports questions: for each pending question,
-write an answer that meets the answer-quality rubric below (analogy first,
-plain language, `file:line` evidence when code is involved) and submit it:
+Steps 3–4 start independent processes: launch them in one parallel tool
+block. If **no interpreter exists**: keep the note (it reads fine from
+`file://`), skip server/watcher, and say plainly that interactive Q&A
+needs Python 3.9+.
+
+## Step 3 — Write the note body, build, lint
+
+1. Slugify the topic (`http-caching`, `recoil-vs-redux`). An existing
+   body in `src/<slug>.html` means an update — edit it, don't start over.
+2. Write the body to `~/.understand/src/<slug>.html` following
+   [references/html-style.md](references/html-style.md): sections +
+   evidence chain ONLY (no html/head/body/rail/hero/index — the tool
+   owns all of that), meeting every element quota. Cite real `file:line`
+   evidence for code subjects; authoritative docs otherwise.
+3. Build (title uses `|` for the two hero lines; the lede carries one
+   `<mark class="hl">` clause; the port comes from config.json):
+
+```
+"<interpreter>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/note_tool.py" build <slug> --title "Line one|Line two" --lede "…<mark class=\"hl\">…</mark>…" --lang <lang>
+```
+
+4. **Progressive writing for long notes**: after writing the first 2–3
+   sections, build once and give the user the URL immediately (the page
+   grows on refresh as you append), then write the remaining sections
+   into the body and rebuild.
+5. Run the gate and fix every ✘ until it passes — never waive a failure:
+
+```
+"<interpreter>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/note_tool.py" lint <slug>
+```
+
+6. Reply in two lines maximum: note title (user's language) + URL from
+   the build output. Nothing else — the note carries the explanation.
+
+## Step 4 — Watch for browser questions
+
+The watcher from Step 2 exits and prints pending questions when they
+arrive. For each: write an answer meeting the answer-quality rubric and
+submit it:
 
 ```
 echo "<answer text>" | "<interpreter>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/qa_tool.py" --qa <home>/.understand/notes/qa.jsonl answer <qid> -
 ```
 
-On Windows, write the answer to a temp file and pass the path instead of
-piping. Summarize what you answered in one line in the chat. **After
-answering, always restart the watcher** — a watcher that isn't restarted
-means every later browser question goes unanswered.
-
-At the start of any session where the user mentions a note, check once for
-unanswered questions (`qa_tool.py ... pending`) before anything else.
+On Windows, write the answer to a temp UTF-8 file and pass the path.
+Summarize in one line in the chat. **After answering, always restart the
+watcher.** At the start of any session where the user mentions a note,
+check once for unanswered questions (`qa_tool.py ... pending`).
 
 ## Answer quality rubric
 
-Applies to notes and to browser answers alike.
+Applies to note bodies and browser answers alike.
 
-- **Layer 1 — the analogy.** One coherent everyday metaphor system for the
-  whole topic (a kitchen, a post office, a school — pick one and stay in
-  it). It must cover the topic's moving parts and how they interact, not
-  just decorate the intro. Wrap the metaphor's key nouns in
-  `<span class="toys">` in the note.
-- **Layer 2 — the engineering reality.** Map every metaphor element back to
-  the real mechanism. Every term is explained in plain words at first use —
-  assume the reader knows no jargon.
-- **Evidence.** Code subjects cite `file:line` (`.fileline` chips +
-  evidence-chain footnotes). Non-code subjects cite authoritative docs.
+- **Layer 1 — the analogy.** One coherent everyday metaphor system for
+  the whole topic; it must cover the moving parts and their
+  interactions, not decorate the intro. Wrap its key nouns in
+  `<span class="toys">`.
+- **Layer 2 — the engineering reality.** Map every metaphor element back
+  to the real mechanism; every term gets a plain-words gloss at first
+  use.
+- **Evidence.** Code cites `file:line` (`.fileline` + evidence chain);
+  docs cite authoritative sources.
 - **Deep-dive threads.** The closing NEXT callout offers 2–4 numbered
-  questions the reader is likely to ask next; they double as browser Q&A
-  starters.
+  follow-ups; they double as browser Q&A starters.
 - **Length discipline.** Complete but tight; the note is a reference the
-  reader returns to, not a transcript. Cut anything that doesn't survive
-  the metaphor→mechanism mapping.
+  reader returns to, not a transcript.
 
 ## Conversation follow-ups
 
-When the user picks a deep-dive thread or asks a follow-up in chat: answer
-briefly in the conversation, then append the exchange as a new section at
-the end of the note (full ELI5 treatment there) and refresh the catalog
-lede if the scope grew. Do not regenerate the whole note; the note stays
-canonical.
+Answer briefly in the conversation, then give the exchange the full ELI5
+treatment: append a section to the body in `src/<slug>.html`, rebuild,
+re-lint. For legacy notes with no body file, edit the built page in
+place (and say so). The note stays canonical.
 
 ## Degradation rules
 
-- Server down mid-session → note still works; retry Step 3 once per turn,
-  don't loop.
-- Watcher died → restart it (Step 4); never run two watchers.
-- `qa.jsonl` corrupt lines → scripts skip them automatically; proceed.
-- Plugin assets missing locally → re-run the Step 2 copy.
+- Server down mid-session → note still works; retry Step 2's probe once
+  per turn, don't loop.
+- Watcher died → restart it; never run two watchers.
+- `qa.jsonl` corrupt lines → scripts skip them; proceed.
+- Lint failures → fix the body and re-run; never hand-edit the built
+  page to satisfy lint (it's regenerated).

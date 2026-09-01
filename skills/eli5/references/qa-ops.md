@@ -31,6 +31,8 @@ All commands go through the interpreter cached in `~/.understand/config.json`
 |---|---|
 | Liveness probe | `curl -m 1 http://127.0.0.1:<port>/health` |
 | Start server (background) | `"<py>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/server.py" --root <home>/.understand/notes --port <port>` |
+| Build a note from its body | `"<py>" …/note_tool.py build <slug> --title "one\|two" --lede "…" --lang <lg>` (also updates catalog + index; safe to re-run as the body grows) |
+| Quality gate | `"<py>" …/note_tool.py lint <slug>` (exit 1 + ✘ report on any unmet quota or structural break) |
 | Questions still needing an answer | `"<py>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/qa_tool.py" --qa <home>/.understand/notes/qa.jsonl pending` |
 | Submit an answer (unix) | `echo "<text>" \| "<py>" …/qa_tool.py --qa <qa> answer <qid> -` |
 | Submit an answer (windows-safe) | write `<text>` to a temp UTF-8 file, then `"<py>" …/qa_tool.py --qa <qa> answer <qid> <tempfile>` |

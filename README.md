@@ -49,10 +49,11 @@ Everything runs on `127.0.0.1` only — nothing leaves your machine. Uninstallin
 
 ```text
 ┌─ terminal ─────────────┐      ┌─ ~/.understand/ ──────────────────┐
-│ /eli5 <topic>          │      │ notes/<slug>.html   the note       │
-│ → two-layer answer     │─────▶│ notes/index.html    catalog        │
-│ → note + server + watch│      │ notes/qa.jsonl      Q&A log        │
-└────────────────────────┘      │ notes/assets/…      styles & JS    │
+│ /eli5 <topic>          │      │ src/<slug>.html     body (written) │
+│ → body → build → lint  │─────▶│ notes/<slug>.html   built page     │
+│ → 2-line reply w/ URL  │      │ notes/index.html    auto catalog   │
+└────────────────────────┘      │ notes/qa.jsonl      Q&A log        │
+                                │ notes/assets/…      styles & JS    │
                                 └──────────────┬─────────────────────┘
 ┌─ browser ──────────────┐                     │ 127.0.0.1:<port>
 │ select text → ask      │──POST /ask─────────▶│ (server.py, stdlib) │

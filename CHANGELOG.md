@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.3.0 (2026-09-02)
+
+Body/build split — the model writes content, the tool owns structure.
+
+- **`note_tool.py`**: new `build` command assembles the page from a body
+  file (`~/.understand/src/<slug>.html`): skeleton, hero (two-line title
+  via `|`), **auto-generated rail derived from the section titles**,
+  related-notes links from the catalog, pager/colophon (localized),
+  catalog upsert, and index rebuild — all idempotent, so long notes can
+  be built early and grow on refresh (progressive writing)
+- **`note_tool.py lint`**: deterministic quality gate — element quotas
+  (sections / diagram / tables / trace / deep dives / callouts / toys /
+  highlighter marks / evidence items), rail-anchor resolution, no refs
+  outside the served directory, asset existence, lang attribute
+- **Token & speed**: skeleton, rail, and index are no longer generated
+  per note (~2–3K output tokens saved on top of 1.2.0's chat cut);
+  SVG `<style>` blocks hoisted into `style.css` and the eli5 star became
+  a CSS `::before` (`:has`-guarded so older notes keep their inline
+  stars); pipeline reordered environment-first so the build always has
+  its port, with server + watcher launched in one parallel block
+- Structural defects (missing rail, wrong class names, asset-path drift)
+  are now impossible by construction rather than checked after the fact
+
 ## 1.2.0 (2026-09-02)
 
 **The note is the answer.** The chat explanation is gone — the skill now
