@@ -3,14 +3,15 @@
    (select-to-ask → Claude answers → comment threads in the page)
    ------------------------------------------------------------
    How it works:
-   · Select any text → a comment bubble appears → type a question
-   · The question is POSTed to the local notes server and
-     appended to qa.jsonl; the quoted text gets a persistent
-     amber highlight with a badge
+   · A composer is docked at the bottom-left; selecting text loads
+     the quote into it — no floating button chasing the selection
+   · The question is POSTed to the local notes server and appended
+     to qa.jsonl; the quoted passage gets a persistent amber
+     highlight (across element boundaries) with a badge
    · Claude-side a watcher monitors qa.jsonl; answers are written
      back as replies in the same thread
-   · Right sidebar: comment threads with avatars, hover-linking
-     to the highlighted text, inline reply box, and resolve
+   · Right sidebar: comment threads; clicking a highlight or badge
+     opens it at that thread
    · With no server reachable, the whole layer hides itself
    ============================================================ */
 (function () {
@@ -19,12 +20,11 @@
   // ── i18n (English default; zh auto-detected from the browser) ──
   var L10N = {
     en: {
-      askBtn: "Comment",
       fab: "Comments",
-      tip: "📖 Select any text to ask a question",
+      tip: "📖 Select any text — it lands in the composer at the bottom-left",
       panelTitle: "Comments",
       panelSub: "select text in the document to ask",
-      empty: "No comments yet. Select any passage and click “Comment”.",
+      empty: "No comments yet. Select any passage and ask in the composer.",
       allDone: "All threads resolved 🎉",
       you: "You",
       claude: "Claude",
@@ -40,16 +40,17 @@
       waitNote: "⏳ Sent to Claude — the answer will appear here…",
       sendFail: "Send failed — is the notes server running?",
       resolveFail: "Could not mark as resolved",
-      placeholder: "What would you like to ask about this passage? (⌘/Ctrl+Enter to send)",
+      composerPlaceholder: "Ask about the selected passage, or anything on this page…",
+      composerEmpty: "Ask anything about this note…",
+      clearQuote: "drop quoted passage",
       writing: "✍️ Writing — this page updates itself"
     },
     "zh-CN": {
-      askBtn: "评论",
       fab: "评论",
-      tip: "📖 划选任意文字即可提问",
+      tip: "📖 划选任意文字——引用会进左下角的输入框",
       panelTitle: "评论",
       panelSub: "划选正文任意文字即可提问",
-      empty: "还没有评论。划选正文里的任意一段文字，点「评论」。",
+      empty: "还没有评论。划选正文，在左下角输入框里提问。",
       allDone: "全部已解决 🎉",
       you: "你",
       claude: "Claude",
@@ -65,7 +66,9 @@
       waitNote: "⏳ 已发给 Claude，回答稍后出现在这里…",
       sendFail: "发送失败：本地服务器没有在跑？",
       resolveFail: "标记解决失败",
-      placeholder: "关于这段话想问什么？（⌘/Ctrl+Enter 发送）",
+      composerPlaceholder: "就选中的这段提问，或问本页任何问题…",
+      composerEmpty: "关于这篇笔记，随便问…",
+      clearQuote: "取消引用",
       writing: "✍️ 正在书写——本页会自动更新"
     }
   };
@@ -138,6 +141,7 @@
     return n;
   }
   function timeOf(ts) { return (ts || "").split(" ").slice(-1)[0] || ts || ""; }
+  function collapseWS(s) { return s.replace(/\s+/g, " "); }
 
   // ── data plane: poll + merge ────────────────────────
   function poll() {
@@ -161,7 +165,6 @@
           state.order.push(e.id);
         }
       } else if (e.type === "answer") {
-        // answers carry only a qid; unknown qids belong to other pages
         var hit = state.byQid[e.qid];
         if (hit) hit.a = e;
       } else if (e.type === "resolve") {
@@ -176,9 +179,7 @@
     if (on === state.online) return;
     state.online = on;
     renderFab();
-    // offline is invisible by design: the note reads as a clean static
-    // page with no comment UI, and it reappears the moment the server
-    // answers again — the reader never sees an "offline" state
+    composer.style.display = on ? "" : "none"; // offline = invisible layer
     if (on && !setOnline.tipped) {
       setOnline.tipped = true;
       toast(T.tip);
@@ -186,67 +187,79 @@
   }
 
   // ── in-text anchors: persistent comment highlight ──
-  function tryAnchor(entry) {
-    if (entry.anchored || entry.resolved) return;
-    var quote = (entry.q.quote || "").replace(/\s+/g, " ").trim();
-    if (quote.length < 4) { entry.anchored = true; return; }
+  // The quote is matched against the whole main column with whitespace
+  // collapsed, spanning text-node boundaries: a passage that crosses
+  // inline tags still gets highlighted (one mark per text segment).
+  function buildFullMap() {
+    // concatenate per-node whitespace-collapsed text with NO separator:
+    // a quote crossing an inline tag (<code>, <strong>, toys spans) is
+    // contiguous in the selection string, so it must be contiguous here
     var main = document.querySelector("main") || document.body;
     var walker = document.createTreeWalker(main, NodeFilter.SHOW_TEXT, null);
+    var full = "";
+    var map = []; // map[i] = { node, off }
     var node;
     while ((node = walker.nextNode())) {
-      var map = buildMap(node.data);
-      if (map.text.indexOf(quote) === -1) continue;
-      var start = map.idx[map.text.indexOf(quote)];
-      var endPos = map.text.indexOf(quote) + quote.length - 1;
-      var end = (map.idx[endPos] != null ? map.idx[endPos] : node.data.length - 1) + 1;
-      try {
-        var range = document.createRange();
-        range.setStart(node, start);
-        range.setEnd(node, end);
-        var mark = el("mark", "qa-anchor" + (entry.a ? " answered" : ""));
-        range.surroundContents(mark);
-        var ref = el("sup", "qa-ref" + (entry.a ? " answered" : ""), (entry.a ? "✓" : "?") + entry.no);
-        ref.title = entry.q.text;
-        ref.addEventListener("click", function () { openPanel(entry.q.id, false); });
-        mark.addEventListener("click", function () { openPanel(entry.q.id, false); });
-        entry.refs = [mark, ref];
-        mark.after(ref);
-        entry.anchored = true;
-      } catch (err) { /* crossing element boundaries: skip the anchor,
-                        the sidebar still shows the thread */ }
-      return;
-    }
-  }
-  function buildMap(data) {
-    var text = "", idx = [];
-    for (var i = 0; i < data.length; i++) {
-      if (/\s/.test(data[i])) {
-        if (text.slice(-1) === " ") continue;
-        text += " "; idx.push(i);
-      } else {
-        text += data[i]; idx.push(i);
+      var data = node.data;
+      var prev = "";
+      for (var i = 0; i < data.length; i++) {
+        if (/\s/.test(data[i])) {
+          if (prev === " ") continue;
+          full += " "; map.push({ node: node, off: i });
+          prev = " ";
+        } else {
+          full += data[i]; map.push({ node: node, off: i });
+          prev = data[i];
+        }
       }
     }
-    return { text: text, idx: idx };
+    return { text: full, map: map };
   }
 
-  // hover-link + click-to-locate (card ↔ highlighted text)
-  function linkCardToAnchor(entry, card) {
-    card.addEventListener("mouseenter", function () {
-      entry.refs.forEach(function (n) { n.classList.add("hot"); });
+  function tryAnchor(entry) {
+    if (entry.anchored || entry.resolved) return;
+    var quote = collapseWS(entry.q.quote || "").trim();
+    if (quote.length < 4) { entry.anchored = true; return; }
+    var fm = buildFullMap();
+    var at = fm.text.indexOf(quote);
+    if (at === -1) { entry.anchored = true; return; } // not on this page (yet)
+    var end = at + quote.length - 1;
+    // group the matched character range into per-node segments
+    var segs = [];
+    var seg = null;
+    for (var i = at; i <= end; i++) {
+      var m = fm.map[i];
+      if (!m) continue; // inter-node space
+      if (seg && seg.node === m.node && m.off === seg.end) {
+        seg.end = m.off + 1;
+      } else {
+        if (seg) segs.push(seg);
+        seg = { node: m.node, start: m.off, end: m.off + 1 };
+      }
+    }
+    if (seg) segs.push(seg);
+
+    var marks = [];
+    segs.forEach(function (s, idx) {
+      try {
+        var range = document.createRange();
+        range.setStart(s.node, s.start);
+        range.setEnd(s.node, s.end);
+        var mark = el("mark", "qa-anchor" + (entry.a ? " answered" : ""));
+        range.surroundContents(mark);
+        mark.addEventListener("click", function () { openPanel(entry.q.id, false); });
+        marks.push(mark);
+        if (idx === 0) {
+          var ref = el("sup", "qa-ref" + (entry.a ? " answered" : ""), (entry.a ? "✓" : "?") + entry.no);
+          ref.title = entry.q.text;
+          ref.addEventListener("click", function () { openPanel(entry.q.id, false); });
+          mark.after(ref);
+          marks.push(ref);
+        }
+      } catch (err) { /* boundary quirk on one segment: the rest still mark */ }
     });
-    card.addEventListener("mouseleave", function () {
-      entry.refs.forEach(function (n) { n.classList.remove("hot"); });
-    });
-    card.addEventListener("click", function (ev) {
-      if (ev.target.closest("button, textarea, a")) return;
-      var a = entry.refs[0];
-      if (!a) return;
-      a.scrollIntoView({ block: "center", behavior: "smooth" });
-      a.classList.remove("flash");
-      void a.offsetWidth; // restart the animation
-      a.classList.add("flash");
-    });
+    entry.refs = marks;
+    entry.anchored = true;
   }
 
   // ── UI: sidebar / FAB / threads ─────────────────────
@@ -275,10 +288,9 @@
   }
 
   function openPanel(focusQid, scrollList) {
-    closePopover(); // whatever path opened the sidebar, the bubble is gone
     panelOpen = true;
     panel.classList.add("open");
-    hideAskBtn();
+    document.body.classList.add("qa-panel-open");
     fab.style.display = "none"; // the round button overlaps the sidebar — step aside
     var wb = document.querySelector(".hmu-writing-badge");
     if (wb) wb.style.display = "none";
@@ -296,10 +308,10 @@
   function closePanel() {
     panelOpen = false;
     panel.classList.remove("open");
-    renderFab(); // bring the round button back (only when online)
+    document.body.classList.remove("qa-panel-open");
+    renderFab();
     var wb = document.querySelector(".hmu-writing-badge");
     if (wb) wb.style.display = "";
-    setTimeout(positionAsk, 30); // a live selection re-summons the button at once
   }
 
   function threadCard(entry) {
@@ -307,7 +319,6 @@
     var card = el("div", "qa-thread");
     card.setAttribute("data-qid", e.q.id);
 
-    // head: avatar + name + time
     var head = el("div", "qa-th-head");
     head.appendChild(avatar("you"));
     var meta = el("div", "qa-th-meta");
@@ -321,17 +332,14 @@
     head.appendChild(meta);
     card.appendChild(head);
 
-    // quoted passage (the sentence the reader selected)
     if (e.q.quote) {
       var bq = el("div", "qa-quote");
       bq.textContent = e.q.quote.length > 140 ? e.q.quote.slice(0, 140) + "…" : e.q.quote;
       card.appendChild(bq);
     }
 
-    // the question
     card.appendChild(el("div", "qa-text", e.q.text));
 
-    // the answer (indented reply)
     if (e.a) {
       var rep = el("div", "qa-reply");
       var rhead = el("div", "qa-th-head");
@@ -361,17 +369,30 @@
     acts.appendChild(btnResolve);
     card.appendChild(acts);
 
-    linkCardToAnchor(e, card);
+    // hover-link + click-to-locate (card ↔ highlighted passage)
+    card.addEventListener("mouseenter", function () {
+      entry.refs.forEach(function (n) { n.classList.add("hot"); });
+    });
+    card.addEventListener("mouseleave", function () {
+      entry.refs.forEach(function (n) { n.classList.remove("hot"); });
+    });
+    card.addEventListener("click", function (ev) {
+      if (ev.target.closest("button, textarea, a")) return;
+      var a = entry.refs[0];
+      if (!a) return;
+      a.scrollIntoView({ block: "center", behavior: "smooth" });
+      a.classList.remove("flash");
+      void a.offsetWidth;
+      a.classList.add("flash");
+    });
+
     return card;
   }
 
-  // inline reply composer (under the thread)
   function toggleReplyBox(card, entry) {
-    closePopover(); // following up in a thread → collapse the ask bubble
     var existing = card.querySelector(".qa-replybox");
     if (existing) { existing.remove(); return; }
-    // release any leftover page selection so the floating button can't
-    // resurrect while composing
+    // release any leftover page selection
     try { window.getSelection().removeAllRanges(); } catch (err) {}
     var box = el("div", "qa-replybox");
     var ta = document.createElement("textarea");
@@ -431,9 +452,8 @@
 
   function render() {
     renderFab();
-    state.order.forEach(function (id) { tryAnchor(state.byQid[id]); });
-    // resolved threads release their in-text highlight
     state.order.forEach(function (id) {
+      tryAnchor(state.byQid[id]);
       var t = state.byQid[id];
       if (t.resolved && t.refs.length) {
         t.refs.forEach(function (n) { n.classList.add("resolved"); });
@@ -460,7 +480,6 @@
     } else if (open.length === 0) {
       list.appendChild(el("p", "qa-empty", T.allDone));
     }
-    // resolved threads are removed outright — resolve deletes the thread
     open.forEach(function (id) { list.appendChild(threadCard(state.byQid[id])); });
     panel.appendChild(list);
   }
@@ -469,144 +488,90 @@
     panelOpen ? closePanel() : openPanel();
   });
 
-  // ── selection → comment popover ─────────────────────
-  var askBtn = el("button", "qa-askbtn", T.askBtn);
-  askBtn.style.display = "none";
-  var pop = null;
+  // ── composer: docked bottom-left, always ready ──────
+  var composer = el("div", "qa-composer");
+  var compQuote = el("div", "qa-comp-quote");
+  compQuote.style.display = "none";
+  var compTa = document.createElement("textarea");
+  compTa.placeholder = T.composerEmpty;
+  var compRow = el("div", "qa-comp-row");
+  var compDrop = el("button", "qa-comp-drop", "✕ " + T.clearQuote);
+  compDrop.title = T.clearQuote;
+  compDrop.style.display = "none";
+  var compSend = el("button", "send", T.send);
+  compRow.appendChild(compDrop);
+  compRow.appendChild(compSend);
+  composer.appendChild(compQuote);
+  composer.appendChild(compTa);
+  composer.appendChild(compRow);
+  composer.style.display = "none"; // until first successful poll
+  document.body.appendChild(composer);
 
-  // safety net: a finished selection doesn't always end with a mouseup we
-  // see (drag released outside the window, keyboard selection, browser
-  // quirks) — selectionchange covers all of them. Debounced, and skipped
-  // while a drag is in progress so the button only appears on release.
-  var mouseDown = false;
-  document.addEventListener("mousedown", function () { mouseDown = true; });
-  document.addEventListener("mouseup", function () {
-    mouseDown = false;
-    setTimeout(positionAsk, 30);
+  var currentQuote = "";
+  function setQuote(q) {
+    currentQuote = q;
+    if (q) {
+      compQuote.textContent = "“" + (q.length > 140 ? q.slice(0, 140) + "…" : q) + "”";
+      compQuote.style.display = "";
+      compDrop.style.display = "";
+      compTa.placeholder = T.composerPlaceholder;
+    } else {
+      compQuote.style.display = "none";
+      compDrop.style.display = "none";
+      compTa.placeholder = T.composerEmpty;
+    }
+  }
+  compDrop.addEventListener("click", function () {
+    try { window.getSelection().removeAllRanges(); } catch (err) {}
+    setQuote("");
   });
-  document.addEventListener("touchend", function () {
-    setTimeout(positionAsk, 60);
-  });
+
+  // selections land in the composer — no floating button anywhere
   var selTimer = null;
   document.addEventListener("selectionchange", function () {
     clearTimeout(selTimer);
     selTimer = setTimeout(function () {
-      if (!mouseDown) positionAsk();
-    }, 200);
-  });
-  function hideAskBtn() { askBtn.style.display = "none"; }
-
-  function positionAsk() {
-    if (!state.online) return;
-    if (pop) { hideAskBtn(); return; } // bubble open — never stack the button
-    if (panel.querySelector(".qa-replybox")) { hideAskBtn(); return; } // composing
-    var sel = window.getSelection();
-    var text = sel ? sel.toString().trim() : "";
-    if (!sel || sel.isCollapsed || text.length < 2) {
-      hideAskBtn();
-      return;
-    }
-    // selections inside the sidebar (copying an answer, composing) don't count
-    if (sel.rangeCount && panel.contains(sel.anchorNode)) { hideAskBtn(); return; }
-    var rect = sel.getRangeAt(0).getBoundingClientRect();
-    if (!rect || (!rect.width && !rect.height)) { hideAskBtn(); return; }
-    // commenting while reading comments is allowed; only passages hidden
-    // behind the open sidebar are off-limits, and the button never
-    // crosses the sidebar's edge
-    var panelLeft = panelOpen ? panel.getBoundingClientRect().left : Infinity;
-    if (rect.right > panelLeft - 8) { hideAskBtn(); return; }
-    askBtn.style.display = "block";
-    var x = Math.min(rect.left + rect.width / 2 - 55, panelLeft - 130, window.innerWidth - 120);
-    var y = rect.top - 40 < 12 ? rect.bottom + 10 : rect.top - 40;
-    askBtn.style.left = Math.max(10, x) + "px";
-    askBtn.style.top = y + "px";
-  }
-
-  askBtn.addEventListener("mousedown", function (ev) {
-    ev.preventDefault(); // keep the selection alive
-  });
-  askBtn.addEventListener("click", function () {
-    var sel = window.getSelection();
-    var quote = sel ? sel.toString().trim() : "";
-    if (!quote || !sel.rangeCount) return;
-    hideAskBtn();
-    openPopover(quote, sel.getRangeAt(0).getBoundingClientRect());
+      var sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) return;
+      if (composer.contains(sel.anchorNode) || panel.contains(sel.anchorNode)) return;
+      var text = sel.toString().trim();
+      if (text.length >= 2) setQuote(text);
+    }, 250);
   });
 
-  function closePopover() {
-    if (pop) { pop.remove(); pop = null; }
-    hideAskBtn();
-  }
-
-  function openPopover(quote, rect) {
-    closePopover();
-    var openRB = panel.querySelector(".qa-replybox"); // one composing state
-    if (openRB) openRB.remove();
-    pop = el("div", "qa-pop");
-    if (quote) {
-      var q = el("p", "quote", "“" + (quote.length > 90 ? quote.slice(0, 90) + "…" : quote) + "”");
-      pop.appendChild(q);
-    }
-    var ta = document.createElement("textarea");
-    ta.placeholder = T.placeholder;
-    pop.appendChild(ta);
-    var row = el("div", "row");
-    var cancel = el("button", null, T.cancel);
-    var send = el("button", "send", T.send);
-    row.appendChild(cancel);
-    row.appendChild(send);
-    pop.appendChild(row);
-    document.body.appendChild(pop);
-    // place above the selection when there's room, else below — never on
-    // top of the quoted text, and never crossing the sidebar's edge
-    var h = pop.offsetHeight || 200;
-    var panelLeft = panelOpen ? panel.getBoundingClientRect().left : Infinity;
-    var left = Math.max(10, Math.min(rect.left + rect.width / 2 - 170, panelLeft - 352));
-    var top = rect.top - h - 14;
-    if (top < 10) top = Math.min(rect.bottom + 12, window.innerHeight - h - 10);
-    pop.style.left = left + "px";
-    pop.style.top = Math.max(10, top) + "px";
-    ta.focus();
-
-    cancel.addEventListener("click", closePopover);
-    function submit() {
-      var text = ta.value.trim();
-      if (!text) return;
-      send.disabled = true;
-      send.textContent = T.sending;
-      fetch(API + "/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ page: PAGE, quote: quote, question: text })
+  function composerSubmit() {
+    var text = compTa.value.trim();
+    if (!text) return;
+    compSend.disabled = true;
+    compSend.textContent = T.sending;
+    fetch(API + "/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ page: PAGE, quote: currentQuote, question: text })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (entry) {
+        if (entry && entry.id) {
+          ingest([entry]);
+          // release the page selection: the anchor highlight takes over
+          try { window.getSelection().removeAllRanges(); } catch (err) {}
+          compTa.value = "";
+          setQuote("");
+          openPanel(entry.id, true);
+          toast(T.sent);
+        } else {
+          throw new Error("bad response");
+        }
       })
-        .then(function (r) { return r.json(); })
-        .then(function (entry) {
-          if (entry && entry.id) {
-            ingest([entry]);
-            closePopover();
-            // release the page selection so the floating button doesn't
-            // resurrect over the freshly anchored highlight
-            try { window.getSelection().removeAllRanges(); } catch (err) {}
-            openPanel(entry.id, true);
-            toast(T.sent);
-          } else {
-            throw new Error("bad response");
-          }
-        })
-        .catch(function () {
-          send.disabled = false;
-          send.textContent = T.retry;
-          toast(T.sendFail);
-        });
-    }
-    send.addEventListener("click", submit);
-    ta.addEventListener("keydown", function (ev) {
-      if ((ev.metaKey || ev.ctrlKey) && ev.key === "Enter") submit();
-    });
+      .catch(function () {
+        compSend.disabled = false;
+        compSend.textContent = T.retry;
+        toast(T.sendFail);
+      });
   }
-
-  document.addEventListener("mousedown", function (ev) {
-    if (pop && !pop.contains(ev.target) && ev.target !== askBtn) closePopover();
+  compSend.addEventListener("click", composerSubmit);
+  compTa.addEventListener("keydown", function (ev) {
+    if ((ev.metaKey || ev.ctrlKey) && ev.key === "Enter") composerSubmit();
   });
 
   // ── toast ───────────────────────────────────────────
@@ -620,9 +585,6 @@
   }
 
   // ── draft pages grow while being written ────────────
-  // A draft note (hmu-draft meta) reloads itself whenever the server has
-  // a newer build — the reader watches sections land without touching
-  // anything. The final build drops the meta and the page settles.
   if (document.querySelector('meta[name="hmu-draft"]')) {
     var badge = el("div", "hmu-writing-badge", T.writing);
     document.body.appendChild(badge);
@@ -635,7 +597,7 @@
           // never reload out from under an open sidebar or an in-flight
           // question — recheck on the next tick instead
           if (prevLen !== null && (finished || Math.abs(txt.length - prevLen) > 40)) {
-            if (!panelOpen && !pop) location.reload();
+            if (!panelOpen && document.activeElement !== compTa && !compTa.value) location.reload();
             return;
           }
           prevLen = txt.length;
@@ -647,7 +609,6 @@
   // ── start ───────────────────────────────────────────
   document.body.appendChild(fab);
   document.body.appendChild(panel);
-  document.body.appendChild(askBtn);
   renderFab();
   poll();
   setInterval(poll, POLL_MS);

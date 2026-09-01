@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.7.0 (2026-09-02)
+
+Interaction model simplified: a docked composer instead of a floating
+bubble.
+
+- **Composer docked at the bottom-left, always ready** — no more bubble
+  chasing the selection, folding, or hiding across states. Selecting
+  text loads the quote into the composer; asking without a selection
+  posts a page-level question. The floating selection button and its
+  positioning machinery are gone entirely (the source of six rounds of
+  overlap bugs)
+- **Highlights survive element boundaries**: quoted passages are matched
+  against the whole main column (whitespace-collapsed, contiguous
+  across inline tags), so a selection crossing <code>/<strong>/toys
+  spans now gets its amber highlight — previously such quotes silently
+  got none, which also broke click-to-locate
+- **Click a thread card → the page scrolls to the quoted passage and
+  flashes it** (reliable now that anchors exist for cross-element
+  quotes); clicking a highlight or badge opens the sidebar at that
+  thread
+- Composer hides when offline, on narrow screens with the sidebar open,
+  and in print; draft auto-refresh also defers while composing
+
 ## 1.6.2 (2026-09-02)
 
 - **Commenting while reading comments works again**: selecting a passage
