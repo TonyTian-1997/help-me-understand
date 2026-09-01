@@ -79,6 +79,19 @@ block. If **no interpreter exists**: keep the note (it reads fine from
 `file://`), skip server/watcher, and say plainly that interactive Q&A
 needs Python 3.9+.
 
+5. Regenerate the reader launchers (idempotent, run whenever the
+   interpreter or port changes) — the no-Claude recovery path for when
+   the idle-timeout has released the port:
+
+```
+"<interpreter>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/note_tool.py" launchers --interpreter "<interpreter>" --port <port> --scripts "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts"
+```
+
+   This installs `<home>/.understand/bin/` (stable script copies) and
+   `Start Notes.command` / `Start Notes.bat` — double-click to revive
+   the server and open the index. Tell the user about them once, on the
+   very first setup only.
+
 ## Step 3 — Write the note body, build, lint
 
 1. Slugify the topic (`http-caching`, `recoil-vs-redux`). An existing

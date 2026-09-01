@@ -321,6 +321,75 @@ def cmd_lint(args):
     print("LINT PASSED")
 
 
+def cmd_launchers(args):
+    """Install the no-Claude recovery path: a stable copy of the runtime
+    scripts in <home>/bin plus double-click launchers (macOS .command,
+    Windows .bat) that probe the server, start it if down, and open the
+    notes index. Idempotent — re-run after any interpreter/port change."""
+    import shutil
+    import stat
+
+    home = Path(args.home).expanduser()
+    scripts = Path(args.scripts).expanduser()
+    for name in ("server.py", "qa_tool.py"):
+        src = scripts / name
+        if not src.exists():
+            print("script not found: %s" % src, file=sys.stderr)
+            sys.exit(1)
+
+    bin_dir = home / "bin"
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    for name in ("server.py", "qa_tool.py"):
+        shutil.copy2(scripts / name, bin_dir / name)
+
+    py = args.interpreter
+    port = args.port
+    server_py = bin_dir / "server.py"
+
+    mac = home / "Start Notes.command"
+    mac.write_text(
+        "#!/bin/bash\n"
+        "# Help Me Understand — double-click to (re)start the notes server and open your notes.\n"
+        'PORT=%d\n'
+        'PY="%s"\n'
+        'ROOT="$HOME/.understand/notes"\n'
+        'if ! curl -m 1 "http://127.0.0.1:$PORT/health" >/dev/null 2>&1; then\n'
+        '  nohup "$PY" "%s" --root "$ROOT" --port "$PORT" >/dev/null 2>&1 &\n'
+        "  sleep 1\n"
+        "fi\n"
+        'open "http://127.0.0.1:$PORT/index.html"\n'
+        % (port, py, server_py),
+        encoding="utf-8",
+        newline="\n",
+    )
+    mac.chmod(mac.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+    win = home / "Start Notes.bat"
+    win.write_text(
+        "@echo off\r\n"
+        "rem Help Me Understand - double-click to (re)start the notes server and open your notes.\r\n"
+        "set PORT=%d\r\n"
+        "set PY=%s\r\n"
+        'curl -m 1 http://127.0.0.1:%%PORT%%/health >nul 2>&1\r\n'
+        "if errorlevel 1 (\r\n"
+        '  start "" /min %%PY%% "%%USERPROFILE%%\\.understand\\bin\\server.py" --root "%%USERPROFILE%%\\.understand\\notes" --port %%PORT%%\r\n'
+        "  timeout /t 1 /nobreak >nul\r\n"
+        ")\r\n"
+        "start \"\" http://127.0.0.1:%%PORT%%/index.html\r\n"
+        % (port, py),
+        encoding="utf-8",
+        newline="",
+    )
+    out = {
+        "ok": True,
+        "bin": str(bin_dir),
+        "launchers": [str(mac), str(win)],
+        "interpreter": py,
+        "port": port,
+    }
+    print(json.dumps(out, ensure_ascii=False))
+
+
 def main():
     ap = argparse.ArgumentParser(description="Help Me Understand note builder + quality gate")
     ap.add_argument("--home", default=str(DEFAULT_HOME), help="root directory (default: ~/.understand)")
@@ -333,12 +402,18 @@ def main():
     b.add_argument("--date", default=None)
     l = sub.add_parser("lint", help="check quotas + structural invariants")
     l.add_argument("slug")
+    la = sub.add_parser("launchers", help="install the double-click recovery launchers")
+    la.add_argument("--interpreter", required=True, help="resolved python interpreter")
+    la.add_argument("--port", type=int, required=True)
+    la.add_argument("--scripts", required=True, help="plugin scripts dir (usually ${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts)")
     args = ap.parse_args()
 
     if args.cmd == "build":
         cmd_build(args)
     elif args.cmd == "lint":
         cmd_lint(args)
+    elif args.cmd == "launchers":
+        cmd_launchers(args)
 
 
 if __name__ == "__main__":

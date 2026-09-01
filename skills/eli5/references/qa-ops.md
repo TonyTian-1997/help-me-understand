@@ -30,6 +30,7 @@ All commands go through the interpreter cached in `~/.understand/config.json`
 | Purpose | Command |
 |---|---|
 | Liveness probe | `curl -m 1 http://127.0.0.1:<port>/health` |
+| Install double-click launchers | `"<py>" …/note_tool.py launchers --interpreter "<py>" --port <port> --scripts <plugin scripts dir>` (writes `~/.understand/bin/` + `Start Notes.command` / `.bat`) |
 | Start server (background) | `"<py>" "${CLAUDE_PLUGIN_ROOT}/skills/eli5/scripts/server.py" --root <home>/.understand/notes --port <port>` |
 | Build a note from its body | `"<py>" …/note_tool.py build <slug> --title "one\|two" --lede "…" --lang <lg>` (also updates catalog + index; safe to re-run as the body grows) |
 | Quality gate | `"<py>" …/note_tool.py lint <slug>` (exit 1 + ✘ report on any unmet quota or structural break) |
@@ -46,6 +47,16 @@ nouns, and keep answers in the drawer-safe subset (paragraphs,
 `**bold**`, `` `code` ``, `- ` lists — no headers/tables/links). Never
 answer without context; for legacy notes without a body file, read the
 built page first. ~150 words is the default budget.
+
+## Port lifecycle
+
+The server exits on its own after **1h with no requests** (open note
+pages keep it alive via the 8s poll; `--idle-timeout 0` = hold forever).
+When the port is cold: the skill's probe restarts it in ~1s, the
+double-click launcher revives it without Claude, and already-loaded
+pages stay readable (comments just show offline). If the reader hits a
+dead URL with no launcher, any note also opens directly from
+`~/.understand/notes/` via file://.
 
 ## Watcher lifecycle — the one rule
 

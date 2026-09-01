@@ -17,12 +17,19 @@
 #      deciding to start a new server process
 #
 #  Usage:
-#    python3 server.py [--root DIR] [--port N]
+#    python3 server.py [--root DIR] [--port N] [--idle-timeout SEC]
+#  Port release: with the default --idle-timeout 3600, the server exits
+#  once no request arrives for an hour — any note open in a browser
+#  keeps it alive via the 8s poll, so it only releases the port when
+#  nobody is reading. The skill's health probe restarts it in ~1s, and
+#  the double-click launcher in ~/.understand/ revives it without
+#  Claude at all. Pass --idle-timeout 0 to hold the port forever.
 #  Cross-platform: Python 3.9+ standard library only
 #  (macOS / Linux / Windows).
 # ─────────────────────────────────────────────────────────
 import argparse
 import json
+import os
 import sys
 import threading
 import time
@@ -32,6 +39,7 @@ from urllib.parse import parse_qs, urlparse
 
 VERSION = "1.0.0"
 _lock = threading.Lock()
+_last_activity = time.time()
 
 
 class Store:
@@ -74,7 +82,10 @@ def make_handler(store, root):
         # (otherwise select-to-ask would silently fail). no-cache keeps
         # browsers revalidating assets, so JS/CSS updates arrive on the
         # next reload instead of being served stale from heuristic cache.
+        # end_headers runs once per handled request — our heartbeat.
         def end_headers(self):
+            global _last_activity
+            _last_activity = time.time()
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Content-Type")
@@ -155,6 +166,9 @@ def main():
     ap = argparse.ArgumentParser(description="Help Me Understand notes server")
     ap.add_argument("--root", default=None, help="notes directory to serve (default: ~/.understand/notes)")
     ap.add_argument("--port", type=int, default=8899, help="port to listen on (default: 8899)")
+    ap.add_argument("--idle-timeout", type=float, default=3600,
+                    help="exit after this many seconds with no requests (any open note page "
+                         "keeps it alive via the 8s poll); 0 = run forever (default: 3600)")
     args = ap.parse_args()
 
     root = Path(args.root).expanduser() if args.root else Path.home() / ".understand" / "notes"
@@ -162,9 +176,25 @@ def main():
     store = Store(root / "qa.jsonl")
 
     addr = ("127.0.0.1", args.port)
-    print("Help Me Understand notes server: http://%s:%d/ (root: %s)" % (addr[0], addr[1], root), flush=True)
+    httpd = ThreadingHTTPServer(addr, make_handler(store, root))
+    httpd.daemon_threads = True
+
+    if args.idle_timeout > 0:
+        def idle_watch():
+            while True:
+                time.sleep(15)
+                idle = time.time() - _last_activity
+                if idle > args.idle_timeout:
+                    print("no requests for %ds — releasing port %d" % (int(idle), args.port), flush=True)
+                    httpd.shutdown()
+                    return
+        threading.Thread(target=idle_watch, daemon=True).start()
+
+    print("Help Me Understand notes server: http://%s:%d/ (root: %s, idle exit: %ss)"
+          % (addr[0], addr[1], root, int(args.idle_timeout) if args.idle_timeout > 0 else "off"), flush=True)
     try:
-        ThreadingHTTPServer(addr, make_handler(store, root)).serve_forever()
+        httpd.serve_forever()
+        httpd.server_close()
     except OSError as e:
         print("failed to listen on port %d: %s" % (args.port, e), file=sys.stderr, flush=True)
         sys.exit(1)

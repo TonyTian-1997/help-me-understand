@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.5.0 (2026-09-02)
+
+Port lifecycle — release when nobody's reading, revive in one action:
+
+- **Idle release**: the server now exits after 1h with no requests
+  (default `--idle-timeout 3600`; 0 = hold forever). Any note open in a
+  browser keeps it alive via the 8s poll, so the port is released only
+  when nobody is reading; the skill's health probe restarts it in ~1s
+- **Double-click revival**: `note_tool.py launchers` installs
+  `~/.understand/Start Notes.command` (macOS) / `Start Notes.bat`
+  (Windows) plus a stable `~/.understand/bin/` script copy — one
+  double-click revives the server and opens the index, no Claude
+  needed. The skill regenerates them whenever the interpreter or port
+  changes
+- Already-loaded pages keep rendering when the server sleeps; only
+  commenting pauses
+
 ## 1.4.1 (2026-09-02)
 
 - **UI language audit**: verified every comment-layer string is fully
