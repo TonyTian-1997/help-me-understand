@@ -3,8 +3,9 @@
    (select-to-ask → Claude answers → comment threads in the page)
    ------------------------------------------------------------
    How it works:
-   · A composer is docked at the bottom-left; selecting text loads
-     the quote into it — no floating button chasing the selection
+   · The 💬 bubble at the bottom-left toggles the comment sidebar;
+     the ask box lives at the top of the sidebar, and selecting
+     text loads the quote into it
    · The question is POSTed to the local notes server and appended
      to qa.jsonl; the quoted passage gets a persistent amber
      highlight (across element boundaries) with a badge
@@ -21,7 +22,7 @@
   var L10N = {
     en: {
       fab: "Comments",
-      tip: "📖 Select any text — it lands in the composer at the bottom-left",
+      tip: "📖 Select any text, then ask via the 💬 button",
       panelTitle: "Comments",
       panelSub: "select text in the document to ask",
       empty: "No comments yet. Select any passage and ask in the composer.",
@@ -48,10 +49,10 @@
     },
     "zh-CN": {
       fab: "评论",
-      tip: "📖 划选任意文字——引用会进左下角的输入框",
+      tip: "📖 划选任意文字，点 💬 提问",
       panelTitle: "评论",
       panelSub: "划选正文任意文字即可提问",
-      empty: "还没有评论。划选正文，在左下角输入框里提问。",
+      empty: "还没有评论。划选正文，点 💬 提问。",
       allDone: "全部已解决 🎉",
       you: "你",
       claude: "Claude",
@@ -182,8 +183,6 @@
     state.online = on;
     if (!on) { // offline = invisible layer
       bubble.style.display = "none";
-      composer.style.display = "none";
-      composerOpen = false;
     } else {
       renderBubble();
     }
@@ -287,8 +286,6 @@
     }
     bubble.style.display = "";
     bubble.title = T.fab;
-    var open = state.order.filter(function (id) { return !state.byQid[id].resolved; }).length;
-    compComments.textContent = T.fab + (open ? " " + open : "");
     var pending = state.order.filter(function (id) { return !state.byQid[id].a && !state.byQid[id].resolved; }).length;
     if (pending > 0) {
       bubbleCnt.textContent = String(pending);
@@ -305,6 +302,7 @@
     var wb = document.querySelector(".hmu-writing-badge");
     if (wb) wb.style.display = "none";
     render();
+    if (currentQuote && typeof compTa !== "undefined") compTa.focus();
     if (focusQid) {
       var card = panel.querySelector('[data-qid="' + focusQid + '"]');
       if (card) {
@@ -321,6 +319,7 @@
     document.body.classList.remove("qa-panel-open");
     var wb = document.querySelector(".hmu-writing-badge");
     if (wb) wb.style.display = "";
+    renderBubble();
   }
 
   function threadCard(entry) {
@@ -481,6 +480,7 @@
     closeBtn.addEventListener("click", closePanel);
     head.appendChild(closeBtn);
     panel.appendChild(head);
+    panel.appendChild(composer); // ask box at the top of the sidebar
 
     var list = el("div", "qa-list");
     var open = state.order.filter(function (id) { return !state.byQid[id].resolved; });
@@ -493,14 +493,8 @@
     panel.appendChild(list);
   }
 
-  // ── composer: expands from the bottom-left bubble ──
+  // ── composer: the ask box at the top of the sidebar ──
   var composer = el("div", "qa-composer");
-  var compHead = el("div", "qa-comp-head");
-  var compComments = el("button", "qa-comp-comments", T.fab);
-  var compClose = el("button", "qa-comp-close", "✕");
-  compClose.title = T.collapse;
-  compHead.appendChild(compComments);
-  compHead.appendChild(compClose);
   var compQuote = el("div", "qa-comp-quote");
   compQuote.style.display = "none";
   var compTa = document.createElement("textarea");
@@ -512,28 +506,11 @@
   var compSend = el("button", "send", T.send);
   compRow.appendChild(compDrop);
   compRow.appendChild(compSend);
-  composer.appendChild(compHead);
   composer.appendChild(compQuote);
   composer.appendChild(compTa);
   composer.appendChild(compRow);
-  composer.style.display = "none";
-  document.body.appendChild(composer);
 
-  var composerOpen = false;
-  function expandComposer(focus) {
-    composerOpen = true;
-    bubble.style.display = "none";
-    composer.style.display = "";
-    if (focus) compTa.focus();
-  }
-  function collapseComposer() {
-    composerOpen = false;
-    composer.style.display = "none";
-    renderBubble();
-  }
-  bubble.addEventListener("click", function () { expandComposer(true); });
-  compClose.addEventListener("click", collapseComposer);
-  compComments.addEventListener("click", function () { openPanel(); });
+  bubble.addEventListener("click", function () { panelOpen ? closePanel() : openPanel(); });
 
   var currentQuote = "";
   function setQuote(q) {
@@ -544,6 +521,9 @@
       compQuote.style.display = "";
       compDrop.style.display = "";
       compTa.placeholder = T.composerPlaceholder;
+      bubble.classList.remove("pulse");
+      void bubble.offsetWidth;
+      bubble.classList.add("pulse");
     } else {
       compQuote.style.display = "none";
       compDrop.style.display = "none";
@@ -555,7 +535,7 @@
     setQuote("");
   });
 
-  // selections land in the composer — no floating button anywhere
+  // selections land in the sidebar's ask box — no floating button anywhere
   var selTimer = null;
   document.addEventListener("selectionchange", function () {
     clearTimeout(selTimer);
@@ -587,7 +567,6 @@
           compTa.value = "";
           setQuote("");
           openPanel(entry.id, true);
-          collapseComposer();
           toast(T.sent);
         } else {
           throw new Error("bad response");

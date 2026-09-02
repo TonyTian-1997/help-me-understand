@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.2 (2026-09-02)
+
+- **The 💬 bubble toggles the comment sidebar** — click to open, click
+  again (or ✕) to close. The ask box now lives at the top of the
+  sidebar itself; selecting a passage loads its quote there and pulses
+  the bubble, so the flow is: select → click 💬 → type → send, and the
+  new thread appears right below the box
+
 ## 1.7.1 (2026-09-02)
 
 - **One entry point**: a small 💬 bubble at the bottom-left replaces
