@@ -177,6 +177,17 @@ Applies to note bodies and browser answers alike.
   the whole topic; it must cover the moving parts and their
   interactions, not decorate the intro. Wrap its key nouns in
   `<span class="toys">`.
+  Pick the domain by **structural match** to the topic's actual shape —
+  pipeline → assembly line / post office; registry → library card
+  catalog; contention → intersection traffic; storage tiers → toolbox
+  vs workshop shelf… — not by generic familiarity. Before writing,
+  glance at the `.toys` nouns of the two most recent notes
+  (`grep toys ~/.understand/src/*.html | tail`): **do not reuse the
+  domain the last note used**, and reach for kitchen/restaurant only
+  when the topic is truly producer-consumer shaped. **Two-stretch
+  rule**: the moment a mapping needs stretching twice to hold, switch
+  domains for that part or drop to plain words — a forced metaphor
+  teaches less than no metaphor.
 - **Layer 2 — the engineering reality.** Map every metaphor element back
   to the real mechanism; every term gets a plain-words gloss at first
   use.

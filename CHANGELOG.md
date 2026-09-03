@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.8.1 (2026-09-04)
+
+- **Analogy domain rules in the answer rubric** — the metaphor domain
+  is now chosen by structural match to the topic's actual shape
+  (pipeline → assembly line / post office, registry → library card
+  catalog…), must not reuse the domain the previous note used, and any
+  mapping that needs stretching twice switches domains or drops to
+  plain words. Ends the every-note-is-a-restaurant pattern.
+
+## 1.8.0 (2026-09-04)
+
+- **In-place quick-ask popup** — selecting text pops the ask box right
+  above the passage; sending posts a top-level thread with its amber
+  anchor, cancel stashes the quote into the sidebar composer as a
+  fallback
+- **Two-level threads** — follow-ups posted from a card carry `parent`
+  and nest as indented child cards inside their thread; never a third
+  level
+- **Ask/send buttons re-arm after success** — fixes the bug where the
+  second question stayed stuck on "Sending…" forever
+- Watcher answers carry the parent thread as context
+
 ## 1.7.2 (2026-09-02)
 
 - **The 💬 bubble toggles the comment sidebar** — click to open, click
