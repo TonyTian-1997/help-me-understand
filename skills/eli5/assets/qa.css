@@ -146,6 +146,70 @@ sup.qa-ref.resolved { display: none; }
 }
 .qa-comp-row button.send:disabled { opacity: .45; cursor: default; }
 
+/* ── quick-ask popup: order at the table ──────────────────
+   Pops right above a finished selection; the arrow (--ax, set
+   from JS) tracks the selection centre. .below flips it under
+   the passage when there is no room above. */
+.qa-askpop {
+  position: fixed;
+  z-index: 60; /* above the bubble (50) and panel (49), below the toast (70) */
+  width: 320px;
+  max-width: calc(100vw - 16px);
+  background: #fff;
+  border: 1px solid var(--fz-line);
+  border-radius: 10px;
+  padding: 8px;
+  font-family: var(--sans);
+  box-shadow: 0 14px 34px -14px rgba(31,35,41,.4);
+  animation: qa-pop-in .14s ease;
+}
+@keyframes qa-pop-in {
+  from { opacity: 0; transform: translateY(4px); }
+}
+.qa-ap-quote {
+  font-size: 12px;
+  color: var(--fz-sub);
+  background: var(--fz-anchor);
+  border-radius: 6px;
+  padding: 5px 9px;
+  margin-bottom: 7px;
+  max-height: 60px;
+  overflow: hidden;
+  line-height: 1.6;
+}
+.qa-askpop textarea {
+  width: 100%;
+  height: 56px;
+  border: 1px solid var(--fz-line);
+  border-radius: 7px;
+  padding: 7px 9px;
+  font: 13px/1.6 var(--sans);
+  background: #fff;
+  color: var(--fz-ink);
+  resize: vertical;
+  box-sizing: border-box;
+}
+.qa-askpop .qa-rb-row { margin-top: 6px; }
+.qa-askpop::after {
+  content: "";
+  position: absolute;
+  left: var(--ax, 50%);
+  bottom: -5px;
+  width: 9px;
+  height: 9px;
+  background: #fff;
+  border-right: 1px solid var(--fz-line);
+  border-bottom: 1px solid var(--fz-line);
+  transform: translateX(-50%) rotate(45deg);
+}
+.qa-askpop.below::after {
+  bottom: auto;
+  top: -5px;
+  border: none;
+  border-left: 1px solid var(--fz-line);
+  border-top: 1px solid var(--fz-line);
+}
+
 /* ── bottom-left bubble: the single comment entry ──────── */
 .qa-bubble {
   position: fixed;
@@ -399,6 +463,33 @@ sup.qa-ref.resolved { display: none; }
 .qa-rb-row button.send { background: var(--fz-blue); border-color: var(--fz-blue); color: #fff; }
 .qa-rb-row button:disabled { opacity: .45; cursor: default; }
 
+/* ── follow-ups: level two, nested in the parent card ─── */
+.qa-children {
+  margin: 8px 0 0 31px;
+  border-left: 2px solid var(--fz-line);
+  padding-left: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.qa-child {
+  background: #FCFDFD;
+  border: 1px solid #F0F1F2;
+  border-radius: 8px;
+  padding: 7px 9px 9px;
+}
+.qa-child .qa-text,
+.qa-child .qa-waiting { margin-left: 33px; }
+.qa-child .qa-reply { margin: 6px 0 0 20px; }
+.qa-child .qa-reply .qa-text { margin-left: 33px; }
+.qa-child-tag {
+  font: 600 10.5px var(--sans);
+  color: var(--fz-blue);
+  background: #EDF3FF;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
 /* empty state */
 .qa-empty {
   margin: 40px 24px;
@@ -448,7 +539,7 @@ sup.qa-ref.resolved { display: none; }
 }
 
 /* hide all interactive parts when printing */
-@media print { .qa-bubble, .qa-panel, .qa-composer, .qa-toast, .hmu-writing-badge, sup.qa-ref { display: none !important; } .qa-anchor { background: transparent; } }
+@media print { .qa-bubble, .qa-panel, .qa-composer, .qa-askpop, .qa-toast, .hmu-writing-badge, sup.qa-ref { display: none !important; } .qa-anchor { background: transparent; } }
 
 /* narrow screens: sidebar overlays fully */
 @media (max-width: 640px) {

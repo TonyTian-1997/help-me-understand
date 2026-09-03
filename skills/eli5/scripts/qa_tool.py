@@ -138,12 +138,31 @@ def context_for(question, qa_path):
     return ctx
 
 
-def with_context(pending, qa_path):
+def parent_thread_of(items, qid):
+    """The parent question plus its first answer, if any — grounds an
+    answer to a follow-up in the exchange it continues."""
+    q = next((i for i in items if i.get("type") == "question" and i.get("id") == qid), None)
+    if not q:
+        return None
+    a = next((i for i in items if i.get("type") == "answer" and i.get("qid") == qid), None)
+    out = {"quote": q.get("quote", ""), "question": q.get("text", "")}
+    if a:
+        out["answer"] = a.get("text", "")
+    return out
+
+
+def with_context(pending, qa_path, items=None):
+    if items is None:
+        items = load(qa_path)
     out = []
     for q in pending:
         q = dict(q)
         ctx = context_for(q, qa_path)
         if ctx:
+            if q.get("parent"):
+                pt = parent_thread_of(items, q["parent"])
+                if pt:
+                    ctx["parent_thread"] = pt
             q["context"] = ctx
         else:
             q["context"] = {"note": "no body file found — read the built page before answering"}
@@ -180,7 +199,8 @@ def main():
     qa.parent.mkdir(parents=True, exist_ok=True)
 
     if args.cmd == "pending":
-        pending = pending_of(load(qa))
+        items = load(qa)
+        pending = pending_of(items)
         if pending:
             emit(with_context(pending, qa) if args.context else pending)
 
@@ -235,7 +255,8 @@ def main():
     elif args.cmd == "watch":
         deadline = time.time() + args.max_wait
         while time.time() < deadline:
-            pending = pending_of(load(qa))
+            items = load(qa)
+            pending = pending_of(items)
             if pending:
                 questions = with_context(pending, qa) if args.context else pending
                 emit({"type": "watch", "questions": questions})

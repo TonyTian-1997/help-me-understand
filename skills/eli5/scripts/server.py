@@ -7,7 +7,8 @@
 #   ① serve the notes directory over HTTP (so pages in the
 #      browser can talk to this server)
 #   ② POST /ask     receive a select-to-ask question → append
-#      to qa.jsonl
+#      to qa.jsonl (a "parent" id in the payload marks it as a
+#      follow-up nesting inside that thread)
 #   ② POST /resolve mark a thread resolved from the browser →
 #      appended like any other event
 #   ③ GET  /qa      incremental Q&A polling (qa.jsonl is the
@@ -133,19 +134,21 @@ def make_handler(store, root):
                     raise ValueError("empty question")
                 quote = str(payload.get("quote", "")).strip()
                 page = str(payload.get("page", "")).strip()
+                parent = str(payload.get("parent", "")).strip()
             except Exception:
                 self._json({"error": "bad request"}, 400)
                 return
-            entry = store.append(
-                {
-                    "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
-                    "type": "question",
-                    "id": "q%d" % int(time.time() * 1000),
-                    "page": page[:200],
-                    "quote": quote[:2000],
-                    "text": question[:4000],
-                }
-            )
+            entry = {
+                "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "type": "question",
+                "id": "q%d" % int(time.time() * 1000),
+                "page": page[:200],
+                "quote": quote[:2000],
+                "text": question[:4000],
+            }
+            if parent:  # follow-up: nests inside this thread, not a new one
+                entry["parent"] = parent[:200]
+            entry = store.append(entry)
             self._json(entry)
 
         def do_GET(self):
